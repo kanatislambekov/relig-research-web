@@ -1,11 +1,12 @@
+from __future__ import annotations
 from pathlib import Path
 
 import streamlit as st
 
 from data_loader import load_docx_paragraphs
 
-DOC_FILENAME = "Text (1).docx"
-DOC_PATH = Path("Results") / DOC_FILENAME
+DOC_FILENAME = "Extended Abstract.docx"
+DOC_PATH = Path("Results") / "Extended_Abstract.pdf"
 
 st.title("Extended abstract")
 
@@ -27,7 +28,7 @@ if DOC_PATH.exists():
 else:
     st.info("The source document is not currently available for download.")
 """Page rendering the extended abstract narrative."""
-from __future__ import annotations
+
 
 import streamlit as st
 

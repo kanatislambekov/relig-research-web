@@ -77,9 +77,9 @@ def _tidy_table(df: pd.DataFrame) -> pd.DataFrame:
         record = {"Variable": display_name, "Context": display_context}
         for column_name, value in metrics.items():
             if isinstance(value, float) and pd.isna(value):
-                record[column_name] = ""
+                record[str(column_name)] = ""
             else:
-                record[column_name] = value
+                record[str(column_name)] = value
         records.append(record)
 
     tidy_df = pd.DataFrame(records).fillna("")

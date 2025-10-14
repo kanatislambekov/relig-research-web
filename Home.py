@@ -130,7 +130,6 @@ st.markdown(
 
 st.success("Use the sidebar to switch between pages and explore the analysis in detail.")
 """Landing page for the research results Streamlit site."""
-from __future__ import annotations
 
 import streamlit as st
 
