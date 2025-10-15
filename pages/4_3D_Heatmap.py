@@ -177,6 +177,101 @@ def _encode_axis(values: Iterable[str]) -> Tuple[np.ndarray, list[str]]:
     codes = np.array([mapping[v] for v in values_list])
     return codes, categories.tolist()
 
+x_codes, x_categories = _encode_axis(table_data[x_field])
+y_codes, y_categories = _encode_axis(table_data[y_field])
+z_values = table_data[z_column].to_numpy()
+
+colour_values = table_data["value"].to_numpy()
+size_values = 8 + table_data["significance"].to_numpy() * 3
+
+hover_text = table_data.apply(
+    lambda row: (
+        f"<b>{row['variable']}</b><br>Context: {row['context']}<br>Specification: {row['metric_label']}<br>"
+        f"Effect: {row['cell_display']}"
+    ),
+    axis=1,
+)
+
+scatter = go.Scatter3d(
+    x=x_codes,
+    y=y_codes,
+    z=z_values,
+    mode="markers",
+    marker=dict(
+        size=size_values,
+        color=colour_values,
+        colorscale="Viridis",
+        colorbar=dict(title="Effect"),
+        opacity=0.9,
+        line=dict(color="rgba(0,0,0,0.35)", width=0.6),
+    ),
+    hovertemplate="%{text}<extra></extra>",
+    text=hover_text,
+)
+
+scatter_fig = go.Figure(data=[scatter])
+scatter_fig.update_layout(
+    margin=dict(l=0, r=0, t=50, b=0),
+    scene=dict(
+        bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(
+            title=axis_labels[x_field],
+            tickvals=list(range(len(x_categories))),
+            ticktext=[_wrap_label(label) for label in x_categories],
+            tickfont=dict(size=11),
+            titlefont=dict(size=14),
+            gridcolor="rgba(200,200,200,0.3)",
+            showbackground=True,
+            backgroundcolor="rgba(240,240,240,0.25)",
+        ),
+        yaxis=dict(
+            title=axis_labels[y_field],
+            tickvals=list(range(len(y_categories))),
+            ticktext=[_wrap_label(label) for label in y_categories],
+            tickfont=dict(size=11),
+            titlefont=dict(size=14),
+            gridcolor="rgba(200,200,200,0.3)",
+            showbackground=True,
+            backgroundcolor="rgba(240,240,240,0.25)",
+        ),
+        zaxis=dict(
+            title=z_axis_title,
+            tickfont=dict(size=11),
+            titlefont=dict(size=14),
+            gridcolor="rgba(200,200,200,0.3)",
+            showbackground=True,
+            backgroundcolor="rgba(240,240,240,0.25)",
+        ),
+    ),
+    title=dict(text=table_options[selected_table], x=0.5),
+)
+
+st.plotly_chart(scatter_fig, use_container_width=True, config={"displaylogo": False})
+
+
+heatmap_source = table_data.pivot_table(index="variable", columns="metric_label", values=z_column, aggfunc="mean")
+heatmap_source = heatmap_source.sort_index()
+
+if not heatmap_source.empty:
+    heatmap_fig = go.Figure(
+        data=go.Heatmap(
+            z=heatmap_source.to_numpy(),
+            x=heatmap_source.columns,
+            y=heatmap_source.index,
+            colorscale="Viridis",
+            colorbar=dict(title=z_axis_title),
+        )
+    )
+    heatmap_fig.update_layout(
+        margin=dict(l=0, r=0, t=50, b=40),
+        title=dict(text="2D projection", x=0.5),
+        xaxis=dict(title="Model / specification", tickangle=35, automargin=True),
+        yaxis=dict(title="Variable", automargin=True),
+        height=480,
+    )
+    st.plotly_chart(heatmap_fig, use_container_width=True, config={"displaylogo": False})
+else:
+    st.info("Not enough data to construct the 2D heat map for the current filters.")
 
 with col1:
     x_field = st.selectbox("X dimension", axis_fields, format_func=lambda key: axis_labels[key])
