@@ -6,6 +6,7 @@ import pandas as pd
 import seaborn as sns
 import streamlit as st
 from matplotlib import pyplot as plt
+from matplotlib.cm import ScalarMappable
 from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  Needed for 3D plotting
 
 from data_loader import load_model_table, parse_numeric
@@ -85,7 +86,7 @@ if matrix.isna().all().all():
 
 matrix = matrix.fillna(method="ffill", axis=1).fillna(method="bfill", axis=1)
 
-fig = plt.figure(figsize=(10, 6))
+fig = plt.figure(figsize=(14, 8))
 ax = fig.add_subplot(111, projection="3d")
 
 x_labels = matrix.index.tolist()
@@ -102,6 +103,12 @@ norm = plt.Normalize(dz.min(), dz.max())
 cmap = plt.get_cmap("viridis")
 colors = cmap(norm(dz))
 
+bars = ax.bar3d(x_pos, y_pos, z_pos, dx, dy, dz, color=colors, shade=True)
+
+sm = ScalarMappable(norm=norm, cmap=cmap)
+sm.set_array([])  # Required for colorbar
+
+
 ax.bar3d(x_pos, y_pos, z_pos, dx, dy, dz, color=colors, shade=True)
 ax.set_xticks(np.arange(len(x_labels)) + dx / 2)
 ax.set_xticklabels(x_labels, rotation=20, ha="right")
@@ -113,7 +120,7 @@ ax.set_title("Effect magnitudes across models")
 
 mappable = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
 mappable.set_array(dz)
-fig.colorbar(mappable, shrink=0.7, aspect=20, label="Effect size")
+
 
 st.pyplot(fig)
 plt.close(fig)
