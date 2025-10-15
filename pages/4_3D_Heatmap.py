@@ -1,135 +1,299 @@
-"""3D heatmap summarising effect sizes across key regression variables."""
+"""Interactive 3D heat map for exploring regression effect sizes."""
 from __future__ import annotations
+
+import re
+from functools import lru_cache
+from typing import Dict, Iterable, Tuple
 
 import numpy as np
 import pandas as pd
-import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
-from matplotlib import pyplot as plt
-from matplotlib.cm import ScalarMappable
-from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  Needed for 3D plotting
 
-from data_loader import load_model_table, parse_numeric
-
-sns.set_theme(style="darkgrid")
-
-st.title("3D heatmap")
-st.caption("Comparing effect sizes across models and variables")
-
-# Load required tables
-_, poisson_muslim = load_model_table("Poisson_Muslim.xlsx")
-_, poisson_values = load_model_table("Poisson_Values.xlsx")
-
-# Helper to extract coefficients
-
-def _grab_coefficients(table: pd.DataFrame, variable: str, columns: dict[str, str]) -> pd.Series:
-    row = table[table["Variable"].str.strip().str.lower() == variable.lower()]
-    if row.empty:
-        return pd.Series(dtype=float)
-    row = row.iloc[0]
-    values = {}
-    for column, label in columns.items():
-        value = parse_numeric(row.get(column, ""))
-        if value is not None:
-            values[label] = value
-    return pd.Series(values)
+from data_loader import count_stars, load_model_table, parse_numeric
 
 
-model_labels = ["Baseline", "Socio-demo", "Full"]
+st.title("3D heat map")
+st.caption("Interactively compare effect sizes across regression models and specifications.")
 
-# Muslim IRRs mapped to baseline -> age controls, socio-demo -> full + region, full -> full control
-muslim_effect = _grab_coefficients(
-    poisson_muslim,
-    "muslim",
-    {
-        "(1) IRR_age": "Baseline",
-        "(3) IRR_full control - reg": "Socio-demo",
-        "(4) IRR_full control": "Full",
-    },
-)
 
-family_effect = _grab_coefficients(
-    poisson_values,
-    "family_support",
-    {
-        "(10) Both": "Baseline",
-        "(11) Both": "Socio-demo",
-        "(12) Both": "Full",
-    },
-)
+TABLE_FILES: Dict[str, Dict[str, str]] = {
+    "poisson_muslim": {"file": "Poisson_Muslim.xlsx", "label": "Poisson – fertility (Muslim focus)"},
+    "poisson_values": {"file": "Poisson_Values.xlsx", "label": "Poisson – fertility (Values)"},
+    "poisson_relig": {"file": "Poisson_relig.xlsx", "label": "Poisson – religiosity"},
+    "cox_muslim": {"file": "Cox_muslim.xlsx", "label": "Cox – birth spacing (Muslim focus)"},
+    "cox_relig": {"file": "Cox_rel.xlsx", "label": "Cox – birth spacing (Religiosity)"},
+}
 
-egalitarian_effect = _grab_coefficients(
-    poisson_values,
-    "egalitarian",
-    {
-        "(7) Egalitarian": "Baseline",
-        "(8) Egalitarian": "Socio-demo",
-        "(9) Egalitarian": "Full",
-    },
-)
 
-# Assemble matrix
-matrix = pd.DataFrame(
-    {
-        "Variable": ["Muslim identity", "Family support index", "Egalitarian index"],
-    }
-)
-matrix = matrix.set_index("Variable")
-matrix.loc["Muslim identity", model_labels] = muslim_effect.reindex(model_labels)
-matrix.loc["Family support index", model_labels] = family_effect.reindex(model_labels)
-matrix.loc["Egalitarian index", model_labels] = egalitarian_effect.reindex(model_labels)
-matrix = matrix.astype(float)
+def _parse_metric_metadata(column: str) -> Tuple[int | None, str, str]:
+    """Return (order, readable label, metric group) for a regression column."""
 
-if matrix.isna().all().all():
-    st.warning("Insufficient data to construct the 3D heatmap.")
+    label = str(column).strip()
+    order: int | None = None
+    match = re.match(r"\((\d+)\)\s*(.*)", label)
+    if match:
+        order = int(match.group(1))
+        label = match.group(2).strip() or label
+
+    upper = label.upper()
+    if "IRR" in upper:
+        metric_group = "Incidence rate ratio"
+    elif "COEF" in upper or "COEFFICIENT" in upper:
+        metric_group = "Coefficient"
+    elif "HAZARD" in upper or re.search(r"\bHR\b", upper):
+        metric_group = "Hazard ratio"
+    elif "ODDS" in upper or re.search(r"\bOR\b", upper):
+        metric_group = "Odds ratio"
+    else:
+        metric_group = "Model output"
+
+    return order, label, metric_group
+
+
+@lru_cache(maxsize=None)
+def _collect_effects() -> pd.DataFrame:
+    """Aggregate tidy regression outputs across all result tables."""
+
+    records: list[dict[str, object]] = []
+    for table_key, meta in TABLE_FILES.items():
+        _, table = load_model_table(meta["file"])
+        if table.empty:
+            continue
+
+        for _, row in table.iterrows():
+            variable = str(row.get("Variable", "")).strip()
+            if not variable or "std. err" in variable.lower():
+                continue
+
+            context = str(row.get("Context", "")).strip() or "All outcomes"
+
+            for column, cell in row.items():
+                if column in {"Variable", "Context"}:
+                    continue
+
+                cell_str = str(cell).strip()
+                if not cell_str:
+                    continue
+
+                value = parse_numeric(cell_str)
+                if value is None:
+                    continue
+
+                order, label, metric_group = _parse_metric_metadata(column)
+                records.append(
+                    {
+                        "table_key": table_key,
+                        "table_label": meta["label"],
+                        "variable": variable,
+                        "context": context,
+                        "metric_raw": column,
+                        "metric_label": label,
+                        "metric_group": metric_group,
+                        "metric_order": order if order is not None else np.nan,
+                        "value": value,
+                        "significance": count_stars(cell_str),
+                        "cell_display": cell_str,
+                    }
+                )
+
+    effects = pd.DataFrame.from_records(records)
+    if effects.empty:
+        return effects
+
+    # Ensure consistent ordering for metrics with numeric prefixes.
+    effects["metric_order"] = effects["metric_order"].fillna(1e6)
+    effects = effects.sort_values(["table_key", "metric_group", "metric_order", "metric_label", "variable"])
+
+    signed_log = np.sign(effects["value"]) * np.log(np.where(effects["value"] == 0, np.nan, np.abs(effects["value"])) )
+    effects["log_value"] = pd.Series(signed_log, index=effects.index).fillna(0)
+    effects["distance_from_one"] = (effects["value"] - 1.0).abs()
+    return effects
+
+
+effects = _collect_effects()
+
+if effects.empty:
+    st.warning("No regression coefficients were found. Please upload the regression tables to the Results folder.")
     st.stop()
 
-matrix = matrix.fillna(method="ffill", axis=1).fillna(method="bfill", axis=1)
 
-fig = plt.figure(figsize=(14, 8))
-ax = fig.add_subplot(111, projection="3d")
+st.sidebar.header("Controls")
 
-x_labels = matrix.index.tolist()
-y_labels = model_labels
-x_pos, y_pos = np.meshgrid(np.arange(len(x_labels)), np.arange(len(y_labels)), indexing="ij")
+table_options = {key: meta["label"] for key, meta in TABLE_FILES.items() if key in effects["table_key"].unique()}
+selected_table = st.sidebar.selectbox("Regression table", options=list(table_options.keys()), format_func=lambda key: table_options[key])
 
-x_pos = x_pos.flatten()
-y_pos = y_pos.flatten()
-z_pos = np.zeros_like(x_pos, dtype=float)
-dx = dy = 0.5
-dz = matrix.values.flatten()
+table_data = effects[effects["table_key"] == selected_table].copy()
 
-norm = plt.Normalize(dz.min(), dz.max())
-cmap = plt.get_cmap("viridis")
-colors = cmap(norm(dz))
+metric_groups = sorted(table_data["metric_group"].unique())
+default_groups = metric_groups if len(metric_groups) < 4 else metric_groups[:3]
+selected_groups = st.sidebar.multiselect("Regression metric", options=metric_groups, default=default_groups)
 
-bars = ax.bar3d(x_pos, y_pos, z_pos, dx, dy, dz, color=colors, shade=True)
+if selected_groups:
+    table_data = table_data[table_data["metric_group"].isin(selected_groups)]
 
-sm = ScalarMappable(norm=norm, cmap=cmap)
-sm.set_array([])  # Required for colorbar
+contexts = sorted(table_data["context"].unique())
+selected_contexts = st.sidebar.multiselect("Outcome context", options=contexts, default=contexts)
+if selected_contexts:
+    table_data = table_data[table_data["context"].isin(selected_contexts)]
+
+if table_data.empty:
+    st.info("No coefficients match the selected filters. Try broadening the selection.")
+    st.stop()
+
+significance_threshold = st.sidebar.slider("Minimum significance (stars)", 0, 3, 0, help="Filter coefficients by the number of significance stars.")
+if significance_threshold:
+    table_data = table_data[table_data["significance"] >= significance_threshold]
+
+if table_data.empty:
+    st.info("No coefficients remain after applying the significance filter.")
+    st.stop()
+
+z_options = {
+    "Effect value": ("value", "Effect size"),
+    "Log effect": ("log_value", "Log(effect)", "Logarithm of the effect size"),
+    "Distance from neutral": ("distance_from_one", "|Effect − 1|", "Distance from the neutral value of 1"),
+}
+
+z_choice = st.sidebar.selectbox("Z dimension", options=list(z_options.keys()))
+z_column = z_options[z_choice][0]
+z_axis_title = z_options[z_choice][1]
+
+axis_fields = ["variable", "metric_label", "context"]
+axis_labels = {
+    "variable": "Variable",
+    "metric_label": "Model / specification",
+    "context": "Outcome context",
+}
+
+def _encode_axis(values: Iterable[str]) -> Tuple[np.ndarray, list[str]]:
+    values_list = list(values)
+    categories = pd.Index(pd.unique(values_list))
+    mapping = {category: idx for idx, category in enumerate(categories)}
+    codes = np.array([mapping[v] for v in values_list])
+    return codes, categories.tolist()
 
 
-ax.bar3d(x_pos, y_pos, z_pos, dx, dy, dz, color=colors, shade=True)
-ax.set_xticks(np.arange(len(x_labels)) + dx / 2)
-ax.set_xticklabels(x_labels, rotation=20, ha="right")
-ax.set_yticks(np.arange(len(y_labels)) + dy / 2)
-ax.set_yticklabels(y_labels)
-ax.set_zlabel("Effect size (ratio)")
-ax.set_zlim(bottom=0)
-ax.set_title("Effect magnitudes across models")
+def _wrap_label(label: str, width: int = 24) -> str:
+    """Insert line breaks so long axis labels remain legible."""
 
-mappable = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-mappable.set_array(dz)
+    chunks = [label[i : i + width] for i in range(0, len(label), width)]
+    return "<br>".join(chunks) if len(chunks) > 1 else label
 
 
-st.pyplot(fig)
-plt.close(fig)
+selector_col1, selector_col2 = st.columns(2)
+with selector_col1:
+    x_field = st.selectbox("X dimension", axis_fields, format_func=lambda key: axis_labels[key])
+with selector_col2:
+    y_field = st.selectbox("Y dimension", [field for field in axis_fields if field != x_field], format_func=lambda key: axis_labels[key])
+
+x_codes, x_categories = _encode_axis(table_data[x_field])
+y_codes, y_categories = _encode_axis(table_data[y_field])
+z_values = table_data[z_column].to_numpy()
+
+colour_values = table_data["value"].to_numpy()
+size_values = 8 + table_data["significance"].to_numpy() * 3
+
+hover_text = table_data.apply(
+    lambda row: (
+        f"<b>{row['variable']}</b><br>Context: {row['context']}<br>Specification: {row['metric_label']}<br>"
+        f"Effect: {row['cell_display']}"
+    ),
+    axis=1,
+)
+
+scatter = go.Scatter3d(
+    x=x_codes,
+    y=y_codes,
+    z=z_values,
+    mode="markers",
+    marker=dict(
+        size=size_values,
+        color=colour_values,
+        colorscale="Viridis",
+        colorbar=dict(title="Effect"),
+        opacity=0.9,
+        line=dict(color="rgba(0,0,0,0.35)", width=0.6),
+    ),
+    hovertemplate="%{text}<extra></extra>",
+    text=hover_text,
+)
+
+scatter_fig = go.Figure(data=[scatter])
+scatter_fig.update_layout(
+    margin=dict(l=0, r=0, t=50, b=0),
+    scene=dict(
+        bgcolor="rgba(0,0,0,0)",
+        xaxis=dict(
+            title=axis_labels[x_field],
+            tickvals=list(range(len(x_categories))),
+            ticktext=[_wrap_label(label) for label in x_categories],
+            tickfont=dict(size=11),
+            titlefont=dict(size=14),
+            gridcolor="rgba(200,200,200,0.3)",
+            showbackground=True,
+            backgroundcolor="rgba(240,240,240,0.25)",
+        ),
+        yaxis=dict(
+            title=axis_labels[y_field],
+            tickvals=list(range(len(y_categories))),
+            ticktext=[_wrap_label(label) for label in y_categories],
+            tickfont=dict(size=11),
+            titlefont=dict(size=14),
+            gridcolor="rgba(200,200,200,0.3)",
+            showbackground=True,
+            backgroundcolor="rgba(240,240,240,0.25)",
+        ),
+        zaxis=dict(
+            title=z_axis_title,
+            tickfont=dict(size=11),
+            titlefont=dict(size=14),
+            gridcolor="rgba(200,200,200,0.3)",
+            showbackground=True,
+            backgroundcolor="rgba(240,240,240,0.25)",
+        ),
+    ),
+    title=dict(text=table_options[selected_table], x=0.5),
+)
+
+st.plotly_chart(scatter_fig, use_container_width=True, config={"displaylogo": False})
+
+
+heatmap_source = table_data.pivot_table(index="variable", columns="metric_label", values=z_column, aggfunc="mean")
+heatmap_source = heatmap_source.sort_index()
+
+if not heatmap_source.empty:
+    heatmap_fig = go.Figure(
+        data=go.Heatmap(
+            z=heatmap_source.to_numpy(),
+            x=heatmap_source.columns,
+            y=heatmap_source.index,
+            colorscale="Viridis",
+            colorbar=dict(title=z_axis_title),
+        )
+    )
+    heatmap_fig.update_layout(
+        margin=dict(l=0, r=0, t=50, b=40),
+        title=dict(text="2D projection", x=0.5),
+        xaxis=dict(title="Model / specification", tickangle=35, automargin=True),
+        yaxis=dict(title="Variable", automargin=True),
+        height=480,
+    )
+    st.plotly_chart(heatmap_fig, use_container_width=True, config={"displaylogo": False})
+else:
+    st.info("Not enough data to construct the 2D heat map for the current filters.")
+
 
 st.markdown(
     """
-    The heatmap highlights the contrast between the positive fertility effects
-    of Muslim identification and family-support values versus the suppressing
-    influence of egalitarian attitudes. Intensity fades but never reverses after
-    adding full controls, signalling robust relationships across specifications.
+    **How to read the visualisation**
+
+    * Each marker represents one coefficient drawn from the selected regression table.
+    * Marker size reflects statistical significance (larger markers have more stars).
+    * Colour intensity follows the raw effect size, while the vertical axis can be switched
+      to alternative encodings such as log effects or distance from the neutral value of 1.
+    * Use the filters in the sidebar to compare specific outcome contexts or specification
+      blocks across the regression tables contained in the repository.
     """
 )
