@@ -14,7 +14,7 @@ import plotly.express as px
 from data_loader import load_kaz_ggs
 
 
-DATA_DIR = Path("Data")
+DATA_DIR = Path("/Users/kiramaya/Documents/GitHub/relig-research-web/Data")
 REGION_NAME_MAP = {
     "ABAY REGION": "Abai",
     "AKMOLA REGION": "Akmola",
@@ -44,6 +44,7 @@ st.title("Descriptive statistics")
 st.caption("Key descriptive patterns and national fertility trends")
 
 # --- Total fertility rate trend ---------------------------------------------
+st.header("Total Fertility Rate in Kazakhstan")
 tfr_series = pd.DataFrame(
     {
         "Year": [2018, 2021, 2024],
@@ -55,10 +56,9 @@ fig_tfr, ax_tfr = plt.subplots(figsize=(8, 4))
 sns.lineplot(data=tfr_series, x="Year", y="Total fertility rate", marker="o", ax=ax_tfr)
 ax_tfr.set_ylim(bottom=0, top=3.8)
 ax_tfr.set_ylabel("Births per woman")
-ax_tfr.set_title("Total fertility rate in Kazakhstan")
 ax_tfr.grid(True, axis="y", alpha=0.3)
 for _, row in tfr_series.iterrows():
-    ax_tfr.annotate(f"{row['Total fertility rate']:.2f}", (row["Year"], row["Total fertility rate"] + 0.05))
+    ax_tfr.annotate(f"{row['Total fertility rate']:.2f}", (row["Year"], row["Total fertility rate"] + 0.1), ha="center")
 st.pyplot(fig_tfr)
 plt.close(fig_tfr)
 
@@ -72,6 +72,8 @@ st.markdown(
 )
 
 
+# --- Regional TFR map -------------------------------------------------------
+st.header("Regional Total Fertility Rates")
 @st.cache_data(show_spinner=False)
 def _load_tfr_inputs() -> tuple[pd.DataFrame, dict]:
     csv_path = DATA_DIR / "TFR.csv"
@@ -187,6 +189,7 @@ work = work.assign(religion=religion.astype(str))
 work = work.replace({"religion": {"nan": np.nan}})
 
 # --- Age distribution -------------------------------------------------------
+st.header("Age distribution by religious denomination")
 age_subset = work[["aage", "religion"]].dropna()
 if not age_subset.empty:
     fig_age, ax_age = plt.subplots(figsize=(8, 4))
@@ -220,7 +223,6 @@ if not age_subset.empty:
     ax_age.set_ylim(bottom=0)
     ax_age.set_xlabel("Age")
     ax_age.set_ylabel("Density")
-    ax_age.set_title("Age distribution by religious identification")
     ax_age.legend(title="Group")
     st.pyplot(fig_age)
     plt.close(fig_age)
@@ -234,6 +236,7 @@ if not age_subset.empty:
     )
 
 # --- Completed fertility ----------------------------------------------------
+st.header("Fertility by religious denomination")
 children_subset = work[["numbiol", "religion"]].dropna()
 if not children_subset.empty:
     fig_children, ax_children = plt.subplots(figsize=(8, 4))
@@ -249,7 +252,6 @@ if not children_subset.empty:
     ax_children.set_xlabel("Religious identification")
     ax_children.set_ylabel("Number of biological children")
     ax_children.set_ylim(bottom=0)
-    ax_children.set_title("Completed fertility by religious identification")
     st.pyplot(fig_children)
     plt.close(fig_children)
 

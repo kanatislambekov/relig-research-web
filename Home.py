@@ -15,38 +15,33 @@ st.set_page_config(
 )
 
 st.title("The role of religiosity and values in shaping fertility outcomes in Kazakhstan")  
-st.subheader("Authors: Islambekov Kanat, Kozlov Vladimir, and Kazenin Konstantin")
+st.info("Authors: Islambekov Kanat, Kozlov Vladimir, and Kazenin Konstantin")
 
 st.markdown(
     """
-    This site summarises empirical findings from the Generations and Gender
+    This site summarises empirical findings from the 2018 Generations and Gender
     Survey in Kazakhstan. It connects descriptive statistics with regression
     models to explain how religiosity and value orientations shape fertility
     outcomes.
     """
 )
 
-st.header("Introduction")
-try:
-    paragraphs = load_docx_paragraphs("Text (1).docx")
-except FileNotFoundError:
-    paragraphs = []
-
-if paragraphs:
-    intro_text = "\n\n".join(paragraphs[:3])
-else:
-    intro_text = dedent(
+st.header("Abstract")
+st.markdown(
         """
-        The research investigates how religious affiliation and family-value
-        orientations correlate with completed fertility and the timing of
-        births. It integrates national survey data with regression models to
-        evaluate whether value systems provide independent explanatory power
-        beyond socio-demographic controls.
-        """
-    ).strip()
-
-st.markdown(intro_text)
-
+    Kazakhstan represents a demographic outlier among post-Soviet states, experiencing a
+        sustained fertility recovery since the late 1990s while most of the region stagnated at
+        sub-replacement levels. This paper examines how religion, religiosity, and value orientations
+        shape fertility outcomes in Kazakhstan using data from the 2018 Generations and Gender
+        Survey (GGS). Poisson and Cox regression models show that Muslims consistently report
+        more children than non-Muslims, even after controlling for socio-demographic
+        characteristics. Religiosity has a non-linear effect as modest levels already raise fertility
+        among Muslims, while religiosity has no effect for non-Muslims. Value orientations exert
+        distinct influences: family-support norms increase fertility, especially for Muslims, whereas
+        gender egalitarianism reduces fertility across groups. Therefore, these findings demonstrate
+        that Kazakhstan’s demographic trajectory is sustained by a combination of Muslim identity,
+        kinship-based family values, and selective adoption of modern norms."""
+)
 st.header("Research questions")
 st.markdown(
     """
@@ -101,4 +96,3 @@ if survey is not None:
 else:
     st.info("Upload the Kaz_Ggs dataset to display key metrics from the survey.")
 
-st.caption("Use the sidebar to navigate through descriptive statistics, modelling results, and interpretive conclusions.")

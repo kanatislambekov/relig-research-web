@@ -11,7 +11,7 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401  Needed for 3D plotting
 
 from data_loader import load_model_table, parse_numeric
 
-sns.set_theme(style="whitegrid")
+sns.set_theme(style="darkgrid")
 
 st.title("3D heatmap")
 st.caption("Comparing effect sizes across models and variables")

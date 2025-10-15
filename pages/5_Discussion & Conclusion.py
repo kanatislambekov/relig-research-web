@@ -3,10 +3,9 @@ from __future__ import annotations
 
 import streamlit as st
 
-st.title("Discussion & conclusion")
-st.caption("Interpreting the findings and outlining future directions")
+st.title("Discussion & Conclusion")
 
-st.header("Synthesis of findings")
+st.header("Findings")
 st.markdown(
     """
     The convergence of descriptive and modelling evidence demonstrates that
@@ -45,7 +44,4 @@ st.markdown(
     """
 )
 
-st.info(
-    "The narrative conclusions remain provisional. Updated datasets or new waves"
-    " of the survey may refine the effect sizes visualised across the site."
-)
+
