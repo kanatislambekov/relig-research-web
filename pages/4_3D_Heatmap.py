@@ -177,6 +177,17 @@ def _encode_axis(values: Iterable[str]) -> Tuple[np.ndarray, list[str]]:
     codes = np.array([mapping[v] for v in values_list])
     return codes, categories.tolist()
 
+
+def _wrap_label(label: str, width: int = 18) -> str:
+    """Wrap long axis labels for better display in Plotly."""
+    import textwrap
+    return "<br>".join(textwrap.wrap(str(label), width=width))
+
+
+# Set default axis fields before using them
+x_field = axis_fields[0]
+y_field = axis_fields[1]
+
 x_codes, x_categories = _encode_axis(table_data[x_field])
 y_codes, y_categories = _encode_axis(table_data[y_field])
 z_values = table_data[z_column].to_numpy()
@@ -215,29 +226,26 @@ scatter_fig.update_layout(
     scene=dict(
         bgcolor="rgba(0,0,0,0)",
         xaxis=dict(
-            title=axis_labels[x_field],
+            title=dict(text=axis_labels[x_field], font=dict(size=14)),
             tickvals=list(range(len(x_categories))),
             ticktext=[_wrap_label(label) for label in x_categories],
             tickfont=dict(size=11),
-            titlefont=dict(size=14),
             gridcolor="rgba(200,200,200,0.3)",
             showbackground=True,
             backgroundcolor="rgba(240,240,240,0.25)",
         ),
         yaxis=dict(
-            title=axis_labels[y_field],
+            title=dict(text=axis_labels[y_field], font=dict(size=14)),
             tickvals=list(range(len(y_categories))),
             ticktext=[_wrap_label(label) for label in y_categories],
             tickfont=dict(size=11),
-            titlefont=dict(size=14),
             gridcolor="rgba(200,200,200,0.3)",
             showbackground=True,
             backgroundcolor="rgba(240,240,240,0.25)",
         ),
         zaxis=dict(
-            title=z_axis_title,
+            title=dict(text=z_axis_title, font=dict(size=14)),
             tickfont=dict(size=11),
-            titlefont=dict(size=14),
             gridcolor="rgba(200,200,200,0.3)",
             showbackground=True,
             backgroundcolor="rgba(240,240,240,0.25)",
@@ -246,9 +254,58 @@ scatter_fig.update_layout(
     title=dict(text=table_options[selected_table], x=0.5),
 )
 
+# --- 3D scatter plot (top) ---
 st.plotly_chart(scatter_fig, use_container_width=True, config={"displaylogo": False})
 
+# --- Controls for axes ---
+x_field = st.selectbox("X dimension", axis_fields, format_func=lambda key: axis_labels[key])
+y_field = st.selectbox("Y dimension", [field for field in axis_fields if field != x_field], format_func=lambda key: axis_labels[key])
 
+x_codes, x_categories = _encode_axis(table_data[x_field])
+y_codes, y_categories = _encode_axis(table_data[y_field])
+z_values = table_data[z_column].to_numpy()
+
+colour_values = table_data["value"].to_numpy()
+size_values = 8 + table_data["significance"].to_numpy() * 3
+
+hover_text = table_data.apply(
+    lambda row: (
+        f"<b>{row['variable']}</b><br>Context: {row['context']}<br>Specification: {row['metric_label']}<br>"
+        f"Effect: {row['cell_display']}"
+    ),
+    axis=1,
+)
+
+scatter = go.Scatter3d(
+    x=x_codes,
+    y=y_codes,
+    z=z_values,
+    mode="markers",
+    marker=dict(
+        size=size_values,
+        color=colour_values,
+        colorscale="Viridis",
+        colorbar=dict(title="Effect"),
+        opacity=0.85,
+    ),
+    hoverinfo="text",
+    text=hover_text,
+)
+
+scatter_fig = go.Figure(data=[scatter])
+scatter_fig.update_layout(
+    margin=dict(l=0, r=0, t=40, b=0),
+    scene=dict(
+        xaxis=dict(title=axis_labels[x_field], tickvals=list(range(len(x_categories))), ticktext=x_categories),
+        yaxis=dict(title=axis_labels[y_field], tickvals=list(range(len(y_categories))), ticktext=y_categories),
+        zaxis=dict(title=z_axis_title),
+    ),
+    title=dict(text=table_options[selected_table], x=0.5),
+)
+
+st.plotly_chart(scatter_fig, use_container_width=True)
+
+# --- 2D heatmap (bottom) ---
 heatmap_source = table_data.pivot_table(index="variable", columns="metric_label", values=z_column, aggfunc="mean")
 heatmap_source = heatmap_source.sort_index()
 
@@ -263,88 +320,14 @@ if not heatmap_source.empty:
         )
     )
     heatmap_fig.update_layout(
-        margin=dict(l=0, r=0, t=50, b=40),
+        margin=dict(l=0, r=0, t=40, b=0),
         title=dict(text="2D projection", x=0.5),
-        xaxis=dict(title="Model / specification", tickangle=35, automargin=True),
-        yaxis=dict(title="Variable", automargin=True),
-        height=480,
+        xaxis_title="Model / specification",
+        yaxis_title="Variable",
     )
-    st.plotly_chart(heatmap_fig, use_container_width=True, config={"displaylogo": False})
+    st.plotly_chart(heatmap_fig, use_container_width=True)
 else:
     st.info("Not enough data to construct the 2D heat map for the current filters.")
-
-with col1:
-    x_field = st.selectbox("X dimension", axis_fields, format_func=lambda key: axis_labels[key])
-    y_field = st.selectbox("Y dimension", [field for field in axis_fields if field != x_field], format_func=lambda key: axis_labels[key])
-
-    x_codes, x_categories = _encode_axis(table_data[x_field])
-    y_codes, y_categories = _encode_axis(table_data[y_field])
-    z_values = table_data[z_column].to_numpy()
-
-    colour_values = table_data["value"].to_numpy()
-    size_values = 8 + table_data["significance"].to_numpy() * 3
-
-    hover_text = table_data.apply(
-        lambda row: (
-            f"<b>{row['variable']}</b><br>Context: {row['context']}<br>Specification: {row['metric_label']}<br>"
-            f"Effect: {row['cell_display']}"
-        ),
-        axis=1,
-    )
-
-    scatter = go.Scatter3d(
-        x=x_codes,
-        y=y_codes,
-        z=z_values,
-        mode="markers",
-        marker=dict(
-            size=size_values,
-            color=colour_values,
-            colorscale="Viridis",
-            colorbar=dict(title="Effect"),
-            opacity=0.85,
-        ),
-        hoverinfo="text",
-        text=hover_text,
-    )
-
-    scatter_fig = go.Figure(data=[scatter])
-    scatter_fig.update_layout(
-        margin=dict(l=0, r=0, t=40, b=0),
-        scene=dict(
-            xaxis=dict(title=axis_labels[x_field], tickvals=list(range(len(x_categories))), ticktext=x_categories),
-            yaxis=dict(title=axis_labels[y_field], tickvals=list(range(len(y_categories))), ticktext=y_categories),
-            zaxis=dict(title=z_axis_title),
-        ),
-        title=dict(text=table_options[selected_table], x=0.5),
-    )
-
-    st.plotly_chart(scatter_fig, use_container_width=True)
-
-
-with col2:
-    heatmap_source = table_data.pivot_table(index="variable", columns="metric_label", values=z_column, aggfunc="mean")
-    heatmap_source = heatmap_source.sort_index()
-
-    if not heatmap_source.empty:
-        heatmap_fig = go.Figure(
-            data=go.Heatmap(
-                z=heatmap_source.to_numpy(),
-                x=heatmap_source.columns,
-                y=heatmap_source.index,
-                colorscale="Viridis",
-                colorbar=dict(title=z_axis_title),
-            )
-        )
-        heatmap_fig.update_layout(
-            margin=dict(l=0, r=0, t=40, b=0),
-            title=dict(text="2D projection", x=0.5),
-            xaxis_title="Model / specification",
-            yaxis_title="Variable",
-        )
-        st.plotly_chart(heatmap_fig, use_container_width=True)
-    else:
-        st.info("Not enough data to construct the 2D heat map for the current filters.")
 
 
 st.markdown(
