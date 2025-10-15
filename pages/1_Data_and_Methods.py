@@ -16,10 +16,8 @@ st.caption("Survey design and modelling strategy overview")
 st.header("Dataset")
 st.markdown(
     """
-    The analysis draws on the Kazakhstan wave of the Generations and Gender
-    Survey. It covers adults aged 18–59 with detailed histories of partnership,
-    fertility, and socio-economic background. Survey weights are used for
-    descriptive statistics, while regression models include controls for age,
+    The analysis draws on the 2018 Kazakhstan wave of the Generations and Gender
+    Survey. Survey weights are used for descriptive statistics, while regression models include controls for age,
     education, employment, parental background, and regional fixed effects.
     """
 )
@@ -34,10 +32,10 @@ except (ImportError, ValueError) as error:
     survey = None
 
 if survey is not None:
-    st.header("Sampling footprint")
+    st.header("Sampling overview")
     region_column = "aregion" if "aregion" in survey.columns else None
     if region_column:
-        region_counts = survey[region_column].astype(str).value_counts().head(10).sort_values(ascending=True)
+        region_counts = survey[region_column].astype(str).value_counts().head(10).sort_values(ascending=False)
         fig_region, ax_region = plt.subplots(figsize=(8, 5))
         sns.barplot(x=region_counts.values, y=region_counts.index, palette="crest", ax=ax_region)
         ax_region.set_xlabel("Respondents")
@@ -49,9 +47,8 @@ if survey is not None:
 
         st.markdown(
             """
-            The survey spans all major oblasts, with larger representation from
-            densely populated southern and urban regions. Balanced coverage
-            ensures that regression estimates are not driven by a single region.
+            The survey covers all major oblasts, with larger representation from
+            densely populated southern and urban regions.
             """
         )
 
@@ -71,7 +68,7 @@ if survey is not None:
 
             st.markdown(
                 """
-                Covariates exhibit modest correlations, indicating that fertility
+                Covariates show modest correlations, indicating that fertility
                 models benefit from including both value indexes and demographic
                 characteristics without severe multicollinearity.
                 """

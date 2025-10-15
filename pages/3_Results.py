@@ -50,7 +50,7 @@ else:
         fig_muslim, ax_muslim = plt.subplots(figsize=(8, 4))
         sns.barplot(data=muslim_effects, x="Model", y="Effect", color="#4C78A8", ax=ax_muslim)
         ax_muslim.axhline(1.0, color="black", linewidth=1, linestyle="--")
-        ax_muslim.set_ylim(bottom=0)
+        ax_muslim.set_ylim(bottom=0, top = 1.5)
         ax_muslim.set_ylabel("Incidence rate ratio")
         ax_muslim.set_title("Muslim fertility advantage across model specifications")
         for index, (_, row) in enumerate(muslim_effects.iterrows()):
@@ -66,70 +66,6 @@ else:
             indicating higher expected counts of biological children.
             """
         )
-
-# --- Value indexes -----------------------------------------------------------
-_, poisson_values = load_model_table("Poisson_Values.xlsx")
-value_rows = poisson_values.set_index("Variable")
-
-value_map = {
-    "parents_support": {
-        "(1) Parental help": "Parental help",
-        "(2) Parental help": "Parental help + socio-demo",
-        "(3) Parental help": "Parental help + full",
-    },
-    "children_support": {
-        "(4) Children help": "Children help",
-        "(5) Children help": "Children help + socio-demo",
-        "(6) Children help": "Children help + full",
-    },
-    "family_support": {
-        "(10) Both": "Combined support",
-        "(11) Both": "Combined + socio-demo",
-        "(12) Both": "Combined + full",
-    },
-    "egalitarian": {
-        "(7) Egalitarian": "Egalitarian",
-        "(8) Egalitarian": "Egalitarian + socio-demo",
-        "(9) Egalitarian": "Egalitarian + full",
-    },
-}
-
-value_frames = []
-for variable, rename_map in value_map.items():
-    if variable not in value_rows.index:
-        continue
-    coeffs = _extract_coefficients(value_rows.loc[variable], rename_map)
-    if coeffs.empty:
-        continue
-    coeffs["Variable"] = variable.replace("_", " ").title()
-    value_frames.append(coeffs)
-
-if value_frames:
-    combined_values = pd.concat(value_frames, ignore_index=True)
-    fig_values, ax_values = plt.subplots(figsize=(10, 5))
-    sns.barplot(
-        data=combined_values,
-        x="Model",
-        y="Effect",
-        hue="Variable",
-        ax=ax_values,
-    )
-    ax_values.axhline(1.0, color="black", linewidth=1, linestyle="--")
-    ax_values.set_ylim(bottom=0)
-    ax_values.set_ylabel("Incidence rate ratio")
-    ax_values.set_title("Value indexes and expected number of children")
-    ax_values.legend(title="Index")
-    st.pyplot(fig_values)
-    plt.close(fig_values)
-
-    st.markdown(
-        """
-        Family-support norms push fertility expectations upward, whereas
-        egalitarian attitudes drive the incidence rate ratio below one. The
-        negative association for egalitarian views remains even after adding
-        extensive controls.
-        """
-    )
 
 # --- Timing models -----------------------------------------------------------
 _, cox_table = load_model_table("Cox_muslim.xlsx")
@@ -147,11 +83,11 @@ if not cox_rows.empty:
         fig_hazard, ax_hazard = plt.subplots(figsize=(8, 4))
         sns.pointplot(data=hazards, x="Model", y="Effect", color="#F58518", ax=ax_hazard)
         ax_hazard.axhline(1.0, color="black", linewidth=1, linestyle="--")
-        ax_hazard.set_ylim(bottom=0)
+        ax_hazard.set_ylim(bottom=0, top = 2.79)
         ax_hazard.set_ylabel("Hazard ratio")
         ax_hazard.set_title("Progression to higher birth orders for Muslim households")
         for index, (_, row) in enumerate(hazards.iterrows()):
-            ax_hazard.text(index, row["Effect"] + 0.02, f"{row['Effect']:.2f}", ha="center")
+            ax_hazard.text(index, row["Effect"] + 0.1, f"{row['Effect']:.2f}", ha="center")
         st.pyplot(fig_hazard)
         plt.close(fig_hazard)
 

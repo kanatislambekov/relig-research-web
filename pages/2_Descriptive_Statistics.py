@@ -18,18 +18,18 @@ st.caption("Key descriptive patterns and national fertility trends")
 tfr_series = pd.DataFrame(
     {
         "Year": [2018, 2021, 2024],
-        "Total fertility rate": [2.93, 3.11, 3.02],
+        "Total fertility rate": [2.93, 3.35, 3.02],
     }
 )
 
 fig_tfr, ax_tfr = plt.subplots(figsize=(8, 4))
 sns.lineplot(data=tfr_series, x="Year", y="Total fertility rate", marker="o", ax=ax_tfr)
-ax_tfr.set_ylim(bottom=0)
+ax_tfr.set_ylim(bottom=0, top=3.8)
 ax_tfr.set_ylabel("Births per woman")
 ax_tfr.set_title("Total fertility rate in Kazakhstan")
 ax_tfr.grid(True, axis="y", alpha=0.3)
 for _, row in tfr_series.iterrows():
-    ax_tfr.annotate(f"{row['Total fertility rate']:.2f}", (row["Year"], row["Total fertility rate"] + 0.02))
+    ax_tfr.annotate(f"{row['Total fertility rate']:.2f}", (row["Year"], row["Total fertility rate"] + 0.05))
 st.pyplot(fig_tfr)
 plt.close(fig_tfr)
 
@@ -42,7 +42,7 @@ st.markdown(
     """
 )
 
-# --- Load microdata for survey-based visuals -------------------------------
+# --- Load survey data --------------------------------------------------------
 try:
     survey = load_kaz_ggs()
 except FileNotFoundError as error:
@@ -127,39 +127,3 @@ if not children_subset.empty:
         """
     )
 
-# --- Value indexes snapshot -------------------------------------------------
-value_columns = [
-    column
-    for column in ("family_support", "children_support", "parents_support", "egalitarian")
-    if column in work.columns
-]
-
-if value_columns:
-    value_subset = work[value_columns + ["religion"]].dropna()
-    if not value_subset.empty:
-        long_values = value_subset.melt(id_vars="religion", var_name="Index", value_name="Score")
-        fig_values, ax_values = plt.subplots(figsize=(9, 5))
-        sns.barplot(
-            data=long_values,
-            x="Index",
-            y="Score",
-            hue="religion",
-            estimator=np.mean,
-            errorbar=("ci", 95),
-            ax=ax_values,
-        )
-        ax_values.set_ylim(bottom=0)
-        ax_values.set_ylabel("Average index score")
-        ax_values.set_title("Value orientations by denomination")
-        ax_values.legend(title="Religious identification")
-        st.pyplot(fig_values)
-        plt.close(fig_values)
-
-        st.markdown(
-            """
-            Family-support indexes score notably higher among Muslim households,
-            while egalitarian scores dip below the sample average. These
-            contrasts motivate the modelling strategy that evaluates values and
-            religious identity jointly.
-            """
-        )

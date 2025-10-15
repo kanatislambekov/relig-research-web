@@ -14,8 +14,8 @@ st.set_page_config(
     layout="wide",
 )
 
-st.title("Fertility, Values, and Religion in Kazakhstan")
-st.subheader("Exploring how belief systems shape family formation")
+st.title("The role of religiosity and values in shaping fertility outcomes in Kazakhstan")  
+st.subheader("Authors: Islambekov Kanat, Kozlov Vladimir, and Kazenin Konstantin")
 
 st.markdown(
     """
@@ -73,12 +73,16 @@ if survey is not None:
     total_cases = len(survey)
     share_muslim = survey["muslim"].value_counts(normalize=True).get("Muslim", 0.0)
     avg_children = (
-        pd.to_numeric(survey["numbiol"], errors="coerce").mean()
-        if "numbiol" in survey.columns
+        pd.to_numeric(survey["totalchildren"], errors="coerce").mean()
+        if "totalchildren" in survey.columns
         else None
     )
-    median_age = survey["aage"].median() if "aage" in survey.columns else None
 
+    median_age = (
+    pd.to_numeric(survey["aage"], errors="coerce").median()
+    if "aage" in survey.columns else None
+    )
+    
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         st.metric("Respondents analysed", f"{total_cases:,}")
@@ -86,9 +90,9 @@ if survey is not None:
         st.metric("Share identifying as Muslim", f"{share_muslim * 100:.1f}%")
     with col3:
         if avg_children is not None:
-            st.metric("Average biological children", f"{avg_children:.2f}")
+            st.metric("Average total children", f"{avg_children:.2f}")
         else:
-            st.metric("Average biological children", "n/a")
+            st.metric("Average total children", "n/a")
     with col4:
         if median_age is not None:
             st.metric("Median age", f"{median_age:.1f} years")
