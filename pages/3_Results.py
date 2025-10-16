@@ -11,10 +11,10 @@ from matplotlib import pyplot as plt
 
 from data_loader import load_model_table, parse_numeric
 
-sns.set_theme(style="whitegrid")
+sns.set_theme(style="darkgrid")
 
 st.title("Results")
-st.caption("Regression evidence on fertility, values, and religiosity")
+st.caption("Regression results on fertility, values, and religiosity")
 
 st.markdown(
     """
@@ -173,7 +173,7 @@ def _plot_category_bars(effect_df: pd.DataFrame, title: str, y_label: str, *, ba
 
 # --- Poisson models: denomination effects -----------------------------------
 poisson_title, poisson_table = load_model_table("Poisson_Muslim.xlsx")
-section_title = poisson_title or "Poisson regression for number of children"
+section_title = poisson_title or "Poisson regression for total number of children within muslim and non-muslim denominations"
 st.subheader(section_title)
 st.dataframe(poisson_table, use_container_width=True)
 

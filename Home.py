@@ -17,14 +17,6 @@ st.set_page_config(
 st.title("The role of religiosity and values in shaping fertility outcomes in Kazakhstan")  
 st.info("Authors: Islambekov Kanat, Kozlov Vladimir, and Kazenin Konstantin")
 
-st.markdown(
-    """
-    This site summarises empirical findings from the 2018 Generations and Gender
-    Survey in Kazakhstan. It connects descriptive statistics with regression
-    models to explain how religiosity and value orientations shape fertility
-    outcomes.
-    """
-)
 
 st.header("Abstract")
 st.markdown(

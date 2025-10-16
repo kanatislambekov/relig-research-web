@@ -5,7 +5,7 @@ import streamlit as st
 
 st.title("Discussion & Conclusion")
 
-st.header("Findings")
+st.header("Provisional Findings")
 st.markdown(
     """
     The convergence of descriptive and modelling evidence demonstrates that
@@ -17,30 +17,11 @@ st.markdown(
     """
 )
 
-st.header("Implications")
-st.markdown(
-    """
-    * **Policy relevance:** Family-support norms correlate with higher fertility,
-      suggesting that social policies reinforcing intergenerational support could
-      sustain higher birth rates without undermining autonomy.
-    * **Value heterogeneity:** The persistence of egalitarian effects highlights
-      emerging value pluralism. Future programmes should acknowledge that gender
-      equality initiatives may moderate fertility intentions.
-    * **Demographic momentum:** Younger age profiles within the Muslim
-      population imply ongoing demographic momentum that will influence labour
-      markets, education needs, and housing demand.
-    """
-)
 
 st.header("Future research")
 st.markdown(
     """
-    * Extend the analysis with longitudinal GGS waves to observe whether value
-      shifts precede changes in completed fertility.
-    * Investigate regional policy experiments to identify contextual factors
-      that amplify or dampen the influence of religiosity on fertility timing.
-    * Collect qualitative interviews to explore how couples reconcile egalitarian
-      ideals with family-support expectations in everyday decision-making.
+    * Extend the analysis with 
     """
 )
 
