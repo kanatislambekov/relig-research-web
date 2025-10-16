@@ -8,10 +8,28 @@ import pandas as pd
 import seaborn as sns
 import streamlit as st
 from matplotlib import pyplot as plt
+from matplotlib import ticker as mticker
 
 from data_loader import load_model_table, parse_numeric
 
 sns.set_theme(style="darkgrid")
+
+
+PALETTE = [
+    "#355070",
+    "#6d597a",
+    "#b56576",
+    "#e56b6f",
+    "#eaac8b",
+    "#f9844a",
+    "#f9c74f",
+]
+
+
+def _build_palette(length: int) -> list[str]:
+    if length <= len(PALETTE):
+        return PALETTE[:length]
+    return sns.color_palette("husl", length)
 
 st.title("Results")
 st.caption("Regression results on fertility, values, and religiosity")
@@ -23,6 +41,21 @@ st.markdown(
     that highlight the most policy-relevant patterns described in the analytical notes.
     """
 )
+
+
+TABLE_TITLE_OVERRIDES = {
+    "Poisson_Muslim.xlsx": "Table 1. Poisson regression for number of children",
+    "Poisson_Values.xlsx": "Table 2. Poisson regression with value indexes",
+    "Poisson_relig.xlsx": "Table 3. Poisson regression for religiosity",
+    "Cox_muslim.xlsx": "Table 4. Cox models for birth spacing",
+    "Cox_rel.xlsx": "Table 5. Cox models for religiosity interactions",
+}
+
+
+def _resolve_title(file_name: str, raw_title: str, default: str) -> str:
+    if file_name in TABLE_TITLE_OVERRIDES:
+        return TABLE_TITLE_OVERRIDES[file_name]
+    return raw_title or default
 
 
 def _get_row(table: pd.DataFrame, variable_key: str) -> pd.Series:
@@ -123,15 +156,56 @@ def _plot_effect_lines(effect_df: pd.DataFrame, y_label: str, title: str, *, bas
     categories = ordered.sort_values("Order")["Specification"].unique()
     ordered["Specification"] = pd.Categorical(ordered["Specification"], categories=categories, ordered=True)
 
-    fig, ax = plt.subplots(figsize=(8, 4))
-    sns.lineplot(data=ordered, x="Specification", y="Effect", hue="Coefficient", marker="o", ax=ax)
+    unique_coeffs = ordered["Coefficient"].unique()
+    palette = _build_palette(len(unique_coeffs))
+
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    if len(unique_coeffs) == 1:
+        sns.lineplot(
+            data=ordered,
+            x="Specification",
+            y="Effect",
+            color=palette[0],
+            marker="o",
+            linewidth=2.2,
+            ax=ax,
+            legend=False,
+        )
+    else:
+        sns.lineplot(
+            data=ordered,
+            x="Specification",
+            y="Effect",
+            hue="Coefficient",
+            palette=palette,
+            marker="o",
+            linewidth=2.2,
+            ax=ax,
+        )
+        legend = ax.get_legend()
+        if legend is not None:
+            legend.set_title("Coefficient")
+            legend.set_frame_on(False)
+            legend.set_bbox_to_anchor((1.02, 1))
     if baseline is not None:
-        ax.axhline(baseline, color="black", linestyle="--", linewidth=1)
+        ax.axhline(baseline, color="#222222", linestyle="--", linewidth=1)
+    for line in ax.lines:
+        line.set_markeredgecolor("white")
+        line.set_markeredgewidth(0.8)
+        line.set_markersize(7)
     ax.set_ylabel(y_label)
     ax.set_xlabel("Specification")
     ax.set_title(title)
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=30, ha="right")
-    ax.legend(title="Coefficient", loc="upper right")
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=28, ha="right")
+    ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
+    y_min = ordered["Effect"].min()
+    y_max = ordered["Effect"].max()
+    if baseline is not None:
+        y_min = min(y_min, baseline)
+        y_max = max(y_max, baseline)
+    span = y_max - y_min
+    margin = 0.1 if span == 0 else span * 0.12
+    ax.set_ylim(y_min - margin, y_max + margin)
     fig.tight_layout()
     return fig
 
@@ -143,14 +217,55 @@ def _plot_birth_effects(effect_df: pd.DataFrame, title: str, *, y_label: str = "
     categories = ordered.sort_values("Order")["Birth order"].unique()
     ordered["Birth order"] = pd.Categorical(ordered["Birth order"], categories=categories, ordered=True)
 
-    fig, ax = plt.subplots(figsize=(8, 4))
-    sns.lineplot(data=ordered, x="Birth order", y="Effect", hue="Coefficient", marker="o", ax=ax)
+    unique_coeffs = ordered["Coefficient"].unique()
+    palette = _build_palette(len(unique_coeffs))
+
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    if len(unique_coeffs) == 1:
+        sns.lineplot(
+            data=ordered,
+            x="Birth order",
+            y="Effect",
+            color=palette[0],
+            marker="o",
+            linewidth=2.2,
+            ax=ax,
+            legend=False,
+        )
+    else:
+        sns.lineplot(
+            data=ordered,
+            x="Birth order",
+            y="Effect",
+            hue="Coefficient",
+            palette=palette,
+            marker="o",
+            linewidth=2.2,
+            ax=ax,
+        )
+        legend = ax.get_legend()
+        if legend is not None:
+            legend.set_title("Coefficient")
+            legend.set_frame_on(False)
+            legend.set_bbox_to_anchor((1.02, 1))
     if baseline is not None:
-        ax.axhline(baseline, color="black", linestyle="--", linewidth=1)
+        ax.axhline(baseline, color="#222222", linestyle="--", linewidth=1)
+    for line in ax.lines:
+        line.set_markeredgecolor("white")
+        line.set_markeredgewidth(0.8)
+        line.set_markersize(7)
     ax.set_ylabel(y_label)
     ax.set_xlabel("Birth order")
     ax.set_title(title)
-    ax.legend(title="Coefficient", loc="upper right")
+    ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
+    y_min = ordered["Effect"].min()
+    y_max = ordered["Effect"].max()
+    if baseline is not None:
+        y_min = min(y_min, baseline)
+        y_max = max(y_max, baseline)
+    span = y_max - y_min
+    margin = 0.1 if span == 0 else span * 0.12
+    ax.set_ylim(y_min - margin, y_max + margin)
     fig.tight_layout()
     return fig
 
@@ -159,21 +274,67 @@ def _plot_category_bars(effect_df: pd.DataFrame, title: str, y_label: str, *, ba
     if effect_df.empty:
         return None
     ordered = effect_df.sort_values("Level")
-    fig, ax = plt.subplots(figsize=(8, 4))
-    sns.barplot(data=ordered, x="Label", y="Effect", color="#4C78A8", ax=ax)
+    colors = _build_palette(len(ordered))
+    palette = dict(zip(ordered["Label"], colors))
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    sns.barplot(data=ordered, x="Label", y="Effect", palette=palette, ax=ax, saturation=0.9)
     if baseline is not None:
-        ax.axhline(baseline, color="black", linestyle="--", linewidth=1)
+        ax.axhline(baseline, color="#222222", linestyle="--", linewidth=1)
     ax.set_ylabel(y_label)
     ax.set_xlabel("Religiosity level")
     ax.set_title(title)
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=30, ha="right")
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=25, ha="right")
+    ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
+    for container in ax.containers:
+        ax.bar_label(container, fmt="{:.2f}")
+    fig.tight_layout()
+    return fig
+
+
+def _plot_category_gradient(effect_df: pd.DataFrame, title: str, y_label: str, *, baseline: float | None = 1.0) -> plt.Figure | None:
+    if effect_df.empty:
+        return None
+    ordered = effect_df.sort_values("Level")
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    base_color = PALETTE[0]
+    ax.plot(ordered["Level"], ordered["Effect"], color=base_color, linewidth=2.2, marker="o")
+    scatter_palette = dict(zip(ordered["Level"], _build_palette(len(ordered))))
+    sns.scatterplot(
+        data=ordered,
+        x="Level",
+        y="Effect",
+        hue="Level",
+        palette=scatter_palette,
+        s=140,
+        ax=ax,
+        legend=False,
+        edgecolor="white",
+        linewidth=0.8,
+    )
+    if baseline is not None:
+        ax.axhline(baseline, color="#222222", linestyle="--", linewidth=1)
+    ax.set_xticks(ordered["Level"])
+    ax.set_xticklabels(ordered["Label"], rotation=20, ha="right")
+    ax.set_ylabel(y_label)
+    ax.set_xlabel("Religiosity intensity")
+    ax.set_title(title)
+    ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
+    y_min = ordered["Effect"].min()
+    y_max = ordered["Effect"].max()
+    if baseline is not None:
+        y_min = min(y_min, baseline)
+        y_max = max(y_max, baseline)
+    span = y_max - y_min
+    margin = 0.1 if span == 0 else span * 0.12
+    ax.set_ylim(y_min - margin, y_max + margin)
     fig.tight_layout()
     return fig
 
 
 # --- Poisson models: denomination effects -----------------------------------
-poisson_title, poisson_table = load_model_table("Poisson_Muslim.xlsx")
-section_title = poisson_title or "Poisson regression for number of children"
+poisson_file = "Poisson_Muslim.xlsx"
+poisson_title, poisson_table = load_model_table(poisson_file)
+section_title = _resolve_title(poisson_file, poisson_title, "Poisson regression for number of children")
 st.subheader(section_title)
 st.dataframe(poisson_table, use_container_width=True)
 
@@ -210,8 +371,9 @@ st.markdown(
 
 
 # --- Poisson models: value indexes -------------------------------------------
-values_title, values_table = load_model_table("Poisson_Values.xlsx")
-st.subheader(values_title or "Poisson regressions with value indexes")
+values_file = "Poisson_Values.xlsx"
+values_title, values_table = load_model_table(values_file)
+st.subheader(_resolve_title(values_file, values_title, "Poisson regressions with value indexes"))
 st.dataframe(values_table, use_container_width=True)
 
 value_spec_map = {
@@ -272,8 +434,9 @@ st.markdown(
 
 
 # --- Poisson models: religiosity ---------------------------------------------
-relig_title, relig_table = load_model_table("Poisson_relig.xlsx")
-st.subheader(relig_title or "Poisson regressions for religiosity")
+relig_file = "Poisson_relig.xlsx"
+relig_title, relig_table = load_model_table(relig_file)
+st.subheader(_resolve_title(relig_file, relig_title, "Poisson regressions for religiosity"))
 st.dataframe(relig_table, use_container_width=True)
 
 category_records = []
@@ -302,6 +465,15 @@ if category_fig:
     st.pyplot(category_fig)
     plt.close(category_fig)
 
+category_gradient_fig = _plot_category_gradient(
+    category_df,
+    "Gradient of fertility effects across religiosity levels",
+    "Incidence rate ratio",
+)
+if category_gradient_fig:
+    st.pyplot(category_gradient_fig)
+    plt.close(category_gradient_fig)
+
 continuous_row = _get_row(relig_table, "religiosity")
 continuous_effect = parse_numeric(continuous_row.get("(2) Religious", "")) if not continuous_row.empty else None
 if continuous_effect is not None:
@@ -318,8 +490,9 @@ st.markdown(
 
 
 # --- Cox models: birth timing by denomination --------------------------------
-cox_muslim_title, cox_muslim_table = load_model_table("Cox_muslim.xlsx")
-st.subheader(cox_muslim_title or "Cox models for birth spacing")
+cox_muslim_file = "Cox_muslim.xlsx"
+cox_muslim_title, cox_muslim_table = load_model_table(cox_muslim_file)
+st.subheader(_resolve_title(cox_muslim_file, cox_muslim_title, "Cox models for birth spacing"))
 st.dataframe(cox_muslim_table, use_container_width=True)
 
 birth_columns = [col for col in cox_muslim_table.columns if col.endswith("birth .")]
@@ -343,8 +516,9 @@ st.markdown(
 
 
 # --- Cox models: religiosity interactions ------------------------------------
-cox_rel_title, cox_rel_table = load_model_table("Cox_rel.xlsx")
-st.subheader(cox_rel_title or "Cox models for religiosity")
+cox_rel_file = "Cox_rel.xlsx"
+cox_rel_title, cox_rel_table = load_model_table(cox_rel_file)
+st.subheader(_resolve_title(cox_rel_file, cox_rel_title, "Cox models for religiosity"))
 st.dataframe(cox_rel_table, use_container_width=True)
 
 rel_birth_columns = [col for col in cox_rel_table.columns if col.endswith("birth .")]
