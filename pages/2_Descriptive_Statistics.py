@@ -38,7 +38,7 @@ REGION_NAME_MAP = {
     "ZHETISU REGION": "Jetisu",
 }
 
-sns.set_theme(style="whitegrid")
+sns.set_theme(style="darkgrid")
 
 st.title("Descriptive statistics")
 st.caption("Key descriptive patterns and national fertility trends")

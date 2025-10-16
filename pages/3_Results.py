@@ -18,7 +18,7 @@ st.caption("Regression results on fertility, values, and religiosity")
 
 st.markdown(
     """
-    The models below unpack fertility differentials across religious groups and value systems.
+    The models below show fertility differentials across religious groups and value systems.
     Each subsection presents the original regression table together with focused visualisations
     that highlight the most policy-relevant patterns described in the analytical notes.
     """
@@ -173,7 +173,7 @@ def _plot_category_bars(effect_df: pd.DataFrame, title: str, y_label: str, *, ba
 
 # --- Poisson models: denomination effects -----------------------------------
 poisson_title, poisson_table = load_model_table("Poisson_Muslim.xlsx")
-section_title = poisson_title or "Poisson regression for total number of children within muslim and non-muslim denominations"
+section_title = poisson_title or "Poisson regression for number of children"
 st.subheader(section_title)
 st.dataframe(poisson_table, use_container_width=True)
 
