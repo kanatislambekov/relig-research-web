@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import time
 
 import numpy as np
 import pandas as pd
+import requests
 import seaborn as sns
 import streamlit as st
 from matplotlib import pyplot as plt
+from matplotlib.ticker import FuncFormatter
 import plotly.express as px
 
 from data_loader import load_kaz_ggs
@@ -38,38 +41,173 @@ REGION_NAME_MAP = {
     "ZHETISU REGION": "Jetisu",
 }
 
+POST_SOVIET_COUNTRIES = [
+    ("Armenia", "ARM"),
+    ("Azerbaijan", "AZE"),
+    ("Belarus", "BLR"),
+    ("Estonia", "EST"),
+    ("Georgia", "GEO"),
+    ("Kazakhstan", "KAZ"),
+    ("Kyrgyzstan", "KGZ"),
+    ("Latvia", "LVA"),
+    ("Lithuania", "LTU"),
+    ("Moldova", "MDA"),
+    ("Russia", "RUS"),
+    ("Tajikistan", "TJK"),
+    ("Turkmenistan", "TKM"),
+    ("Ukraine", "UKR"),
+    ("Uzbekistan", "UZB"),
+]
+COUNTRY_CODE_TO_NAME = {code: name for name, code in POST_SOVIET_COUNTRIES}
+TFR_INDICATOR = "SP.DYN.TFRT.IN"
+START_YEAR = 1991
+END_YEAR = pd.Timestamp.now().year
+POST_SOVIET_TFR_PATH = DATA_DIR / "post_soviet_tfr.csv"
+
 sns.set_theme(style="darkgrid")
 
 st.title("Descriptive statistics")
 st.caption("Key descriptive patterns and national fertility trends")
 
 # --- Total fertility rate trend ---------------------------------------------
-st.header("Total Fertility Rate in Kazakhstan")
-tfr_series = pd.DataFrame(
-    {
-        "Year": [2018, 2021, 2024],
-        "Total fertility rate": [2.93, 3.35, 3.02],
-    }
-)
+st.header("Total Fertility Rates in post-Soviet states")
 
-fig_tfr, ax_tfr = plt.subplots(figsize=(8, 4))
-sns.lineplot(data=tfr_series, x="Year", y="Total fertility rate", marker="o", ax=ax_tfr)
-ax_tfr.set_ylim(bottom=0, top=3.8)
-ax_tfr.set_ylabel("Births per woman")
-ax_tfr.grid(True, axis="y", alpha=0.3)
-for _, row in tfr_series.iterrows():
-    ax_tfr.annotate(f"{row['Total fertility rate']:.2f}", (row["Year"], row["Total fertility rate"] + 0.1), ha="center")
-st.pyplot(fig_tfr)
-plt.close(fig_tfr)
 
-st.markdown(
-    """
-    The national total fertility rate (TFR) climbed above three births per woman
-    during the pandemic period before easing slightly in 2024. The broader
-    trajectory still remains well above replacement level, underscoring the
-    importance of examining within-country heterogeneity.
-    """
-)
+@st.cache_data(show_spinner=False)
+def _load_post_soviet_tfr() -> pd.DataFrame:
+    if POST_SOVIET_TFR_PATH.exists():
+        return pd.read_csv(POST_SOVIET_TFR_PATH)
+
+    def _download_post_soviet_tfr() -> pd.DataFrame:
+        records: list[dict] = []
+        for idx, (country, code) in enumerate(POST_SOVIET_COUNTRIES):
+            params = {
+                "format": "json",
+                "per_page": 1000,
+                "date": f"{START_YEAR}:{END_YEAR}",
+            }
+            url = f"https://api.worldbank.org/v2/country/{code}/indicator/{TFR_INDICATOR}"
+
+            for attempt in range(3):
+                response = requests.get(url, params=params, timeout=30)
+                if response.status_code == 429 and attempt < 2:
+                    time.sleep(2 ** attempt)
+                    continue
+                response.raise_for_status()
+                payload = response.json()
+                break
+            else:
+                raise ValueError(f"World Bank request failed repeatedly for {country}.")
+
+            entries = payload[1] if len(payload) > 1 and payload[1] is not None else []
+            for entry in entries:
+                value = entry.get("value")
+                year = entry.get("date")
+                if value is None or year is None:
+                    continue
+                year_int = int(year)
+                if year_int < START_YEAR:
+                    continue
+                records.append(
+                    {
+                        "Country": country,
+                        "ISO3": code,
+                        "Year": year_int,
+                        "Total fertility rate": float(value),
+                    }
+                )
+
+            # Gentle pacing to avoid additional rate limits.
+            if idx < len(POST_SOVIET_COUNTRIES) - 1:
+                time.sleep(0.3)
+
+        if not records:
+            raise ValueError("Fertility observations were empty after download.")
+
+        frame = pd.DataFrame(records)
+        POST_SOVIET_TFR_PATH.parent.mkdir(parents=True, exist_ok=True)
+        frame.to_csv(POST_SOVIET_TFR_PATH, index=False)
+        return frame
+
+    try:
+        return _download_post_soviet_tfr()
+    except (requests.RequestException, ValueError) as error:
+        raise ValueError(
+            "Unable to download World Bank fertility data automatically. "
+            f"Download SP.DYN.TFRT.IN for post-Soviet countries (1991 onward) "
+            f"and save it to {POST_SOVIET_TFR_PATH} with columns "
+            "'Country', 'ISO3', 'Year', 'Total fertility rate'. "
+            f"Original error: {error}"
+        ) from error
+
+
+try:
+    tfr_series = _load_post_soviet_tfr()
+except (requests.RequestException, ValueError) as error:
+    st.warning(f"Unable to retrieve World Bank TFR data: {error}")
+else:
+    recent_years = tfr_series["Year"].unique()
+    if recent_years.size > 0:
+        max_year = int(recent_years.max())
+        min_year = max(max_year - 10, int(tfr_series["Year"].min()))
+        plot_frame = tfr_series[tfr_series["Year"].between(min_year, max_year)].copy()
+    else:
+        plot_frame = tfr_series.copy()
+
+    fig_tfr, ax_tfr = plt.subplots(figsize=(9, 5))
+    highlight_color = "#1b8a5a"
+    baseline_color = "#b3b3b3"
+
+    for country, code in POST_SOVIET_COUNTRIES:
+        country_rows = plot_frame[plot_frame["ISO3"] == code].sort_values("Year")
+        if country_rows.empty:
+            continue
+        is_kazakhstan = country == "Kazakhstan"
+        color = highlight_color if is_kazakhstan else baseline_color
+        linewidth = 2.5 if is_kazakhstan else 1.2
+        alpha = 1.0 if is_kazakhstan else 0.8
+
+        ax_tfr.plot(
+            country_rows["Year"],
+            country_rows["Total fertility rate"],
+            color=color,
+            linewidth=linewidth,
+            alpha=alpha,
+            label=country if is_kazakhstan else None,
+        )
+
+        final_point = country_rows.iloc[-1]
+        ax_tfr.text(
+            final_point["Year"] + 0.1,
+            final_point["Total fertility rate"],
+            country,
+            color=color,
+            fontsize=8,
+            va="center",
+        )
+
+    if not plot_frame.empty:
+        ax_tfr.set_xlim(plot_frame["Year"].min(), plot_frame["Year"].max() + 1.2)
+        ax_tfr.set_ylim(
+            bottom=max(0, plot_frame["Total fertility rate"].min() - 0.2),
+            top=plot_frame["Total fertility rate"].max() + 0.2,
+        )
+    ax_tfr.set_ylabel("Births per woman")
+    ax_tfr.set_xlabel("Year")
+    ax_tfr.grid(True, axis="y", alpha=0.3, linestyle="--")
+    if any(country == "Kazakhstan" for country, _ in POST_SOVIET_COUNTRIES):
+        ax_tfr.legend(loc="upper left")
+    st.pyplot(fig_tfr)
+    plt.close(fig_tfr)
+
+    st.markdown(
+        """
+        Kazakhstan remains among the higher-fertility post-Soviet states,
+        exceeded only by its Central Asian neighbours. The Baltic states cluster
+        near replacement level, while the South Caucasus has converged toward
+        the European average over the past decade.
+        """
+    )
 
 
 # --- Regional TFR map -------------------------------------------------------
@@ -193,18 +331,6 @@ st.header("Age distribution by religious denomination")
 age_subset = work[["aage", "religion"]].dropna()
 if not age_subset.empty:
     fig_age, ax_age = plt.subplots(figsize=(8, 4))
-    sns.kdeplot(
-        data=age_subset,
-        x="aage",
-        fill=True,
-        common_norm=False,
-        color="#bdbdbd",
-        alpha=0.35,
-        linewidth=0,
-        ax=ax_age,
-        label="All respondents",
-    )
-
     palette = sns.color_palette("Set2", n_colors=age_subset["religion"].nunique())
     grouped = sorted(age_subset.groupby("religion"), key=lambda item: str(item[0]))
     for color, (group, group_data) in zip(palette, grouped):
@@ -239,27 +365,58 @@ if not age_subset.empty:
 st.header("Fertility by religious denomination")
 children_subset = work[["numbiol", "religion"]].dropna()
 if not children_subset.empty:
-    fig_children, ax_children = plt.subplots(figsize=(8, 4))
-    sns.violinplot(
-        data=children_subset,
-        x="religion",
-        y="numbiol",
-        scale="width",
-        inner="quartile",
-        palette="Set2",
-        ax=ax_children,
+    parity_counts = (
+        children_subset.groupby(["religion", "numbiol"])
+        .size()
+        .reset_index(name="respondents")
     )
-    ax_children.set_xlabel("Religious identification")
+    parity_counts["share"] = parity_counts.groupby("religion")["respondents"].transform(
+        lambda counts: counts / counts.sum()
+    )
+
+    parities = sorted(parity_counts["numbiol"].unique())
+    muslim_share = (
+        parity_counts[parity_counts["religion"] == "Muslim"]
+        .set_index("numbiol")["share"]
+    )
+    non_muslim_share = (
+        parity_counts[parity_counts["religion"] == "Non-Muslim"]
+        .set_index("numbiol")["share"]
+    )
+
+    muslim_values = [muslim_share.get(parity, 0) for parity in parities]
+    non_muslim_values = [-non_muslim_share.get(parity, 0) for parity in parities]
+
+    max_share = max(muslim_values + [-value for value in non_muslim_values], default=0) or 0.01
+
+    colors = sns.color_palette("colorblind", 2)
+
+    fig_children, ax_children = plt.subplots(figsize=(8, 5))
+    ax_children.barh(
+        parities,
+        non_muslim_values,
+        color=colors[0],
+        label="Non-Muslim",
+    )
+    ax_children.barh(
+        parities,
+        muslim_values,
+        color=colors[1],
+        label="Muslim",
+    )
+    ax_children.axvline(0, color="black", linewidth=1)
+    ax_children.set_xlim(-max_share * 1.1, max_share * 1.1)
+    ax_children.set_xlabel("Share of respondents")
     ax_children.set_ylabel("Number of biological children")
-    ax_children.set_ylim(bottom=0)
+    ax_children.legend(loc="upper center", bbox_to_anchor=(0.5, 1.18), ncol=2)
+    ax_children.xaxis.set_major_formatter(FuncFormatter(lambda value, _pos: f"{abs(value)*100:.0f}%"))
     st.pyplot(fig_children)
     plt.close(fig_children)
 
     st.markdown(
         """
-        Completed fertility remains higher within the Muslim population across
-        the distribution, with thicker tails above three children. The
-        difference persists even when focusing on the interquartile range.
+        The parity pyramid makes the contrast explicit: Muslim respondents are
+        over-represented at three or more children, while non-Muslims cluster
+        on the left side with one or two children.
         """
     )
-

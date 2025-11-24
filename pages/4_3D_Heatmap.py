@@ -1,9 +1,9 @@
-"""Interactive 3D heat map for exploring regression effect sizes."""
+"""Interactive heat map for exploring regression effect sizes."""
 from __future__ import annotations
 
 import re
 from functools import lru_cache
-from typing import Dict, Iterable, Tuple
+from typing import Dict, Tuple
 
 import numpy as np
 import pandas as pd
@@ -14,8 +14,8 @@ import streamlit as st
 from data_loader import count_stars, load_model_table, parse_numeric
 
 
-st.title("3D heat map")
-st.caption("Interactively compare effect sizes across regression models and specifications.")
+st.title("Heat map explorer")
+st.caption("Compare effect sizes across regression models and specifications using an interactive 2D grid.")
 
 
 TABLE_FILES: Dict[str, Dict[str, str]] = {
@@ -160,170 +160,58 @@ z_choice = st.sidebar.selectbox("Z dimension", options=list(z_options.keys()))
 z_column = z_options[z_choice][0]
 z_axis_title = z_options[z_choice][1]
 
-axis_fields = ["variable", "metric_label", "context"]
-axis_labels = {
-    "variable": "Variable",
-    "metric_label": "Model / specification",
-    "context": "Outcome context",
-}
-
-col1, col2 = st.columns((1.1, 1))
-
-
-def _encode_axis(values: Iterable[str]) -> Tuple[np.ndarray, list[str]]:
-    values_list = list(values)
-    categories = pd.Index(pd.unique(values_list))
-    mapping = {category: idx for idx, category in enumerate(categories)}
-    codes = np.array([mapping[v] for v in values_list])
-    return codes, categories.tolist()
-
-
-def _wrap_label(label: str, width: int = 18) -> str:
-    """Wrap long axis labels for better display in Plotly."""
-    import textwrap
-    return "<br>".join(textwrap.wrap(str(label), width=width))
-
-
-# Set default axis fields before using them
-x_field = axis_fields[0]
-y_field = axis_fields[1]
-
-x_codes, x_categories = _encode_axis(table_data[x_field])
-y_codes, y_categories = _encode_axis(table_data[y_field])
-z_values = table_data[z_column].to_numpy()
-
-colour_values = table_data["value"].to_numpy()
-size_values = 8 + table_data["significance"].to_numpy() * 3
-
-hover_text = table_data.apply(
-    lambda row: (
-        f"<b>{row['variable']}</b><br>Context: {row['context']}<br>Specification: {row['metric_label']}<br>"
-        f"Effect: {row['cell_display']}"
-    ),
-    axis=1,
-)
-
-scatter = go.Scatter3d(
-    x=x_codes,
-    y=y_codes,
-    z=z_values,
-    mode="markers",
-    marker=dict(
-        size=size_values,
-        color=colour_values,
-        colorscale="Viridis",
-        colorbar=dict(title="Effect"),
-        opacity=0.9,
-        line=dict(color="rgba(0,0,0,0.35)", width=0.6),
-    ),
-    hovertemplate="%{text}<extra></extra>",
-    text=hover_text,
-)
-
-scatter_fig = go.Figure(data=[scatter])
-scatter_fig.update_layout(
-    margin=dict(l=0, r=0, t=50, b=0),
-    scene=dict(
-        bgcolor="rgba(0,0,0,0)",
-        xaxis=dict(
-            title=dict(text=axis_labels[x_field], font=dict(size=14)),
-            tickvals=list(range(len(x_categories))),
-            ticktext=[_wrap_label(label) for label in x_categories],
-            tickfont=dict(size=11),
-            gridcolor="rgba(200,200,200,0.3)",
-            showbackground=True,
-            backgroundcolor="rgba(240,240,240,0.25)",
-        ),
-        yaxis=dict(
-            title=dict(text=axis_labels[y_field], font=dict(size=14)),
-            tickvals=list(range(len(y_categories))),
-            ticktext=[_wrap_label(label) for label in y_categories],
-            tickfont=dict(size=11),
-            gridcolor="rgba(200,200,200,0.3)",
-            showbackground=True,
-            backgroundcolor="rgba(240,240,240,0.25)",
-        ),
-        zaxis=dict(
-            title=dict(text=z_axis_title, font=dict(size=14)),
-            tickfont=dict(size=11),
-            gridcolor="rgba(200,200,200,0.3)",
-            showbackground=True,
-            backgroundcolor="rgba(240,240,240,0.25)",
-        ),
-    ),
-    title=dict(text=table_options[selected_table], x=0.5),
-)
-
-# --- 3D scatter plot (top) ---
-st.plotly_chart(scatter_fig, use_container_width=True, config={"displaylogo": False})
-
-# --- Controls for axes ---
-x_field = st.selectbox("X dimension", axis_fields, format_func=lambda key: axis_labels[key])
-y_field = st.selectbox("Y dimension", [field for field in axis_fields if field != x_field], format_func=lambda key: axis_labels[key])
-
-x_codes, x_categories = _encode_axis(table_data[x_field])
-y_codes, y_categories = _encode_axis(table_data[y_field])
-z_values = table_data[z_column].to_numpy()
-
-colour_values = table_data["value"].to_numpy()
-size_values = 8 + table_data["significance"].to_numpy() * 3
-
-hover_text = table_data.apply(
-    lambda row: (
-        f"<b>{row['variable']}</b><br>Context: {row['context']}<br>Specification: {row['metric_label']}<br>"
-        f"Effect: {row['cell_display']}"
-    ),
-    axis=1,
-)
-
-scatter = go.Scatter3d(
-    x=x_codes,
-    y=y_codes,
-    z=z_values,
-    mode="markers",
-    marker=dict(
-        size=size_values,
-        color=colour_values,
-        colorscale="Viridis",
-        colorbar=dict(title="Effect"),
-        opacity=0.85,
-    ),
-    hoverinfo="text",
-    text=hover_text,
-)
-
-scatter_fig = go.Figure(data=[scatter])
-scatter_fig.update_layout(
-    margin=dict(l=0, r=0, t=40, b=0),
-    scene=dict(
-        xaxis=dict(title=axis_labels[x_field], tickvals=list(range(len(x_categories))), ticktext=x_categories),
-        yaxis=dict(title=axis_labels[y_field], tickvals=list(range(len(y_categories))), ticktext=y_categories),
-        zaxis=dict(title=z_axis_title),
-    ),
-    title=dict(text=table_options[selected_table], x=0.5),
-)
-
-st.plotly_chart(scatter_fig, use_container_width=True)
-
-# --- 2D heatmap (bottom) ---
+# --- 2D heatmap ---
 heatmap_source = table_data.pivot_table(index="variable", columns="metric_label", values=z_column, aggfunc="mean")
 heatmap_source = heatmap_source.sort_index()
 
 if not heatmap_source.empty:
-    heatmap_fig = go.Figure(
-        data=go.Heatmap(
-            z=heatmap_source.to_numpy(),
-            x=heatmap_source.columns,
-            y=heatmap_source.index,
-            colorscale="Viridis",
-            colorbar=dict(title=z_axis_title),
-        )
+    z_matrix = heatmap_source.to_numpy(dtype=float)
+    finite_values = z_matrix[np.isfinite(z_matrix)]
+    if finite_values.size == 0:
+        st.info("The selected filters only contain missing values for the requested metric.")
+        st.stop()
+
+    z_min = np.nanmin(finite_values)
+    z_max = np.nanmax(finite_values)
+    # Introduce slight padding for the color scale
+    margin = (z_max - z_min) * 0.05 if z_max != z_min else 0.05
+    z_min -= margin
+    z_max += margin
+
+    base_heatmap = go.Heatmap(
+        z=z_matrix,
+        x=heatmap_source.columns,
+        y=heatmap_source.index,
+        colorscale="Viridis",
+        colorbar=dict(title=z_axis_title),
+        hoverongaps=False,
+        zmin=z_min,
+        zmax=z_max,
+        xgap=2,
+        ygap=2,
     )
+
+    nan_overlay = go.Heatmap(
+        z=np.where(np.isnan(z_matrix), 1, 0),
+        x=heatmap_source.columns,
+        y=heatmap_source.index,
+        colorscale=[[0, "rgba(0,0,0,0)"], [1, "#b3b3b3"]],
+        showscale=False,
+        hoverinfo="skip",
+        zmin=0,
+        zmax=1,
+        xgap=2,
+        ygap=2,
+    )
+
+    heatmap_fig = go.Figure(data=[base_heatmap, nan_overlay])
     heatmap_fig.update_layout(
-        margin=dict(l=0, r=0, t=40, b=0),
-        title=dict(text="2D projection", x=0.5),
+        margin=dict(l=40, r=40, t=40, b=40),
+        title=dict(text=f"2D projection – {table_options[selected_table]}", x=0.5),
         xaxis_title="Model / specification",
         yaxis_title="Variable",
+        xaxis=dict(tickangle=0, automargin=True),
+        yaxis=dict(automargin=True),
     )
     st.plotly_chart(heatmap_fig, use_container_width=True)
 else:
@@ -334,11 +222,9 @@ st.markdown(
     """
     **How to read the visualisation**
 
-    * Each marker represents one coefficient drawn from the selected regression table.
-    * Marker size reflects statistical significance (larger markers have more stars).
-    * Colour intensity follows the raw effect size, while the vertical axis can be switched
-      to alternative encodings such as log effects or distance from the neutral value of 1.
-    * Use the filters in the sidebar to compare specific outcome contexts or specification
-      blocks across the regression tables contained in the repository.
+    * Each cell represents one coefficient drawn from the selected regression table.
+    * Cell colours follow the selected vertical axis encoding (value, log value, or distance from 1).
+    * Grey cells indicate specifications without data for that metric.
+    * Use the filters in the sidebar to compare specific outcome contexts or specification blocks.
     """
 )

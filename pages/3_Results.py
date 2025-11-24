@@ -1,9 +1,11 @@
 """Narrative results combining regression outputs with visual summaries."""
 from __future__ import annotations
 
+import math
 import re
 from typing import Dict, Iterable, Tuple
 
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import streamlit as st
@@ -210,6 +212,126 @@ def _plot_effect_lines(effect_df: pd.DataFrame, y_label: str, title: str, *, bas
     return fig
 
 
+def _plot_effect_horizontal(effect_df: pd.DataFrame, x_label: str, title: str, *, baseline: float | None = 1.0) -> plt.Figure | None:
+    if effect_df.empty:
+        return None
+    ordered = effect_df.sort_values(["Order", "Coefficient"])
+    categories = ordered.sort_values("Order")["Specification"].unique()
+    ordered["Specification"] = pd.Categorical(ordered["Specification"], categories=categories, ordered=True)
+    positions = np.arange(len(categories))
+    spec_to_pos = {spec: pos for pos, spec in enumerate(categories)}
+    ordered["Spec position"] = ordered["Specification"].map(spec_to_pos)
+
+    fig, ax = plt.subplots(figsize=(9, 4.5))
+    unique_coeffs = ordered["Coefficient"].unique()
+    palette = _build_palette(len(unique_coeffs))
+    for color, coeff in zip(palette, unique_coeffs):
+        subset = ordered[ordered["Coefficient"] == coeff]
+        if subset.empty:
+            continue
+        subset = subset.sort_values("Spec position")
+        ax.plot(
+            subset["Effect"],
+            subset["Spec position"],
+            marker="o",
+            linewidth=2,
+            color=color,
+            label=coeff,
+        )
+    if baseline is not None:
+        ax.axvline(baseline, color="#222222", linestyle="--", linewidth=1)
+    ax.set_yticks(positions)
+    ax.set_yticklabels(categories)
+    ax.invert_yaxis()
+    ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
+    ax.set_xlabel(x_label)
+    ax.set_ylabel("Specification")
+    ax.set_title(title)
+    ax.legend(loc="upper right", frameon=False)
+
+    x_min = ordered["Effect"].min()
+    x_max = ordered["Effect"].max()
+    if baseline is not None:
+        x_min = min(x_min, baseline)
+        x_max = max(x_max, baseline)
+    span = x_max - x_min
+    margin = 0.05 if span == 0 else span * 0.12
+    ax.set_xlim(x_min - margin, x_max + margin)
+
+    for line in ax.lines:
+        line.set_markeredgecolor("white")
+        line.set_markeredgewidth(0.8)
+        line.set_markersize(7)
+
+    fig.tight_layout()
+    return fig
+
+
+def _plot_effect_small_multiples(effect_df: pd.DataFrame, axis_label: str, title: str, *, baseline: float | None = 1.0) -> plt.Figure | None:
+    if effect_df.empty:
+        return None
+    ordered = effect_df.sort_values(["Order", "Coefficient"]).copy()
+    ordered["Specification"] = ordered["Specification"].astype(str)
+
+    coefficients = ordered["Coefficient"].unique()
+    total = len(coefficients)
+    cols = 2 if total > 1 else 1
+    rows = math.ceil(total / cols)
+
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 4.6 + 0.8, rows * 3.4 + 0.4), sharex=True, sharey=True)
+    axes_array = np.atleast_1d(axes).reshape(-1)
+    palette = _build_palette(total)
+
+    for idx, (coeff, color) in enumerate(zip(coefficients, palette)):
+        ax = axes_array[idx]
+        subset = ordered[ordered["Coefficient"] == coeff].copy()
+        if subset.empty:
+            ax.axis("off")
+            continue
+        subset = subset.sort_values("Order").reset_index(drop=True)
+        positions = np.arange(len(subset))
+        ax.plot(
+            subset["Effect"],
+            positions,
+            marker="o",
+            linewidth=2,
+            color=color,
+        )
+        if baseline is not None:
+            ax.axvline(baseline, color="#3c3c3c", linestyle="--", linewidth=0.9)
+        ax.set_title(coeff, fontsize=11)
+        ax.set_yticks(positions)
+        ax.set_yticklabels(subset["Specification"])
+        ax.invert_yaxis()
+        ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=4, prune="both"))
+        ax.set_xlabel("")
+        for line in ax.lines:
+            line.set_markeredgecolor("white")
+            line.set_markeredgewidth(0.8)
+            line.set_markersize(6)
+
+    for ax in axes_array[total:]:
+        ax.axis("off")
+
+    fig.suptitle(title, fontsize=14)
+    fig.supxlabel(axis_label)
+    fig.supylabel("Specification")
+
+    x_min = ordered["Effect"].min()
+    x_max = ordered["Effect"].max()
+    if baseline is not None:
+        x_min = min(x_min, baseline)
+        x_max = max(x_max, baseline)
+    span = x_max - x_min
+    margin = 0.05 if span == 0 else span * 0.12
+    xlim = (x_min - margin, x_max + margin)
+    for ax in axes_array[:total]:
+        ax.set_xlim(*xlim)
+
+    fig.tight_layout(rect=(0.03, 0.02, 1, 0.93))
+    return fig
+
+
 def _plot_birth_effects(effect_df: pd.DataFrame, title: str, *, y_label: str = "Hazard ratio", baseline: float | None = 1.0) -> plt.Figure | None:
     if effect_df.empty:
         return None
@@ -291,6 +413,26 @@ def _plot_category_bars(effect_df: pd.DataFrame, title: str, y_label: str, *, ba
     return fig
 
 
+def _plot_category_lollipops(effect_df: pd.DataFrame, title: str, x_label: str, *, baseline: float | None = 1.0) -> plt.Figure | None:
+    if effect_df.empty:
+        return None
+    ordered = effect_df.sort_values("Level")
+    fig, ax = plt.subplots(figsize=(8, 4.2))
+    positions = np.arange(len(ordered))
+    ax.hlines(positions, baseline if baseline is not None else ordered["Effect"].min(), ordered["Effect"], color="#94a3b8", linewidth=2)
+    ax.scatter(ordered["Effect"], positions, color="#1d4ed8", s=80, zorder=3, edgecolor="white", linewidth=0.8)
+    if baseline is not None:
+        ax.axvline(baseline, color="#222222", linestyle="--", linewidth=1)
+    ax.set_yticks(positions)
+    ax.set_yticklabels(ordered["Label"])
+    ax.set_xlabel(x_label)
+    ax.set_ylabel("")
+    ax.set_title(title)
+    ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
+    fig.tight_layout()
+    return fig
+
+
 def _plot_category_gradient(effect_df: pd.DataFrame, title: str, y_label: str, *, baseline: float | None = 1.0) -> plt.Figure | None:
     if effect_df.empty:
         return None
@@ -351,7 +493,7 @@ poisson_effects = _build_effect_frame(
     {"muslim": "Self-identified Muslim", "muslim1": "Extended Muslim (muslim1)"},
     spec_name_map=poisson_spec_map,
 )
-poisson_fig = _plot_effect_lines(
+poisson_fig = _plot_effect_horizontal(
     poisson_effects,
     "Incidence rate ratio",
     "Muslim fertility advantage across specifications",
@@ -377,13 +519,13 @@ st.subheader(_resolve_title(values_file, values_title, "Poisson regressions with
 st.dataframe(values_table, use_container_width=True)
 
 value_spec_map = {
-    "Parental help": "Parental support (continuous)",
-    "Children help": "Children support (continuous)",
-    "Egalitarian": "Egalitarian values (continuous)",
-    "Both": "All continuous indexes",
-    "Egalitarian_short": "Egalitarian (binary)",
-    "Family support_short": "Family support (binary)",
-    "Both shorts": "All binary indexes",
+    "Parental help": "Parental support index",
+    "Children help": "Children support index",
+    "Egalitarian": "Egalitarian values index",
+    "Both": "Full model: all continuous indexes",
+    "Egalitarian_short": "Egalitarian indicator",
+    "Family support_short": "Family support indicator",
+    "Both shorts": "Full model: both binary indexes",
 }
 base_value_effects = _build_effect_frame(
     values_table,
@@ -395,7 +537,7 @@ base_value_effects = _build_effect_frame(
     },
     spec_name_map=value_spec_map,
 )
-base_value_fig = _plot_effect_lines(
+base_value_fig = _plot_effect_small_multiples(
     base_value_effects,
     "Incidence rate ratio",
     "Family and egalitarian values in fertility models",
@@ -414,7 +556,7 @@ interaction_value_effects = _build_effect_frame(
     },
     spec_name_map=value_spec_map,
 )
-interaction_value_fig = _plot_effect_lines(
+interaction_value_fig = _plot_effect_small_multiples(
     interaction_value_effects,
     "Incidence rate ratio",
     "Value interactions with Muslim identification",
@@ -456,7 +598,7 @@ for level, label in religiosity_labels.items():
     category_records.append({"Level": level, "Label": f"{label} (cat. {level})", "Effect": value})
 
 category_df = pd.DataFrame(category_records)
-category_fig = _plot_category_bars(
+category_fig = _plot_category_lollipops(
     category_df,
     "Fertility differences by religiosity intensity",
     "Incidence rate ratio",

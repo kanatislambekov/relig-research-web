@@ -1,0 +1,430 @@
+Country,ISO3,Year,Total fertility rate
+Armenia,ARM,1991,2.643
+Armenia,ARM,1992,2.499
+Armenia,ARM,1993,2.286
+Armenia,ARM,1994,2.084
+Armenia,ARM,1995,2.067
+Armenia,ARM,1996,2.06
+Armenia,ARM,1997,1.9
+Armenia,ARM,1998,1.81
+Armenia,ARM,1999,1.534
+Armenia,ARM,2000,1.3
+Armenia,ARM,2001,1.2
+Armenia,ARM,2002,1.2
+Armenia,ARM,2003,1.3
+Armenia,ARM,2004,1.4
+Armenia,ARM,2005,1.3
+Armenia,ARM,2006,1.3
+Armenia,ARM,2007,1.4
+Armenia,ARM,2008,1.4
+Armenia,ARM,2009,1.5
+Armenia,ARM,2010,1.5
+Armenia,ARM,2011,1.5
+Armenia,ARM,2012,1.6
+Armenia,ARM,2013,1.6
+Armenia,ARM,2014,1.7
+Armenia,ARM,2015,1.6
+Armenia,ARM,2016,1.6
+Armenia,ARM,2017,1.6
+Armenia,ARM,2018,1.6
+Armenia,ARM,2019,1.6
+Armenia,ARM,2020,1.7
+Armenia,ARM,2021,1.7
+Armenia,ARM,2022,1.7
+Armenia,ARM,2023,1.9
+Azerbaijan,AZE,1991,2.87
+Azerbaijan,AZE,1992,2.74
+Azerbaijan,AZE,1993,2.7
+Azerbaijan,AZE,1994,2.52
+Azerbaijan,AZE,1995,2.29
+Azerbaijan,AZE,1996,2.06
+Azerbaijan,AZE,1997,2.07
+Azerbaijan,AZE,1998,2.0
+Azerbaijan,AZE,1999,2.07
+Azerbaijan,AZE,2000,2.0
+Azerbaijan,AZE,2001,1.8
+Azerbaijan,AZE,2002,1.8
+Azerbaijan,AZE,2003,1.9
+Azerbaijan,AZE,2004,2.0535
+Azerbaijan,AZE,2005,2.0
+Azerbaijan,AZE,2006,1.97
+Azerbaijan,AZE,2007,1.97
+Azerbaijan,AZE,2008,1.9
+Azerbaijan,AZE,2009,1.82
+Azerbaijan,AZE,2010,1.92
+Azerbaijan,AZE,2011,1.96
+Azerbaijan,AZE,2012,2.0
+Azerbaijan,AZE,2013,1.98
+Azerbaijan,AZE,2014,1.97
+Azerbaijan,AZE,2015,1.94
+Azerbaijan,AZE,2016,1.9
+Azerbaijan,AZE,2017,1.75
+Azerbaijan,AZE,2018,1.73
+Azerbaijan,AZE,2019,1.81
+Azerbaijan,AZE,2020,1.7
+Azerbaijan,AZE,2021,1.52
+Azerbaijan,AZE,2022,1.67
+Azerbaijan,AZE,2023,1.55
+Belarus,BLR,1991,1.805
+Belarus,BLR,1992,1.764
+Belarus,BLR,1993,1.623
+Belarus,BLR,1994,1.533
+Belarus,BLR,1995,1.406
+Belarus,BLR,1996,1.335
+Belarus,BLR,1997,1.25
+Belarus,BLR,1998,1.3
+Belarus,BLR,1999,1.31
+Belarus,BLR,2000,1.317
+Belarus,BLR,2001,1.286
+Belarus,BLR,2002,1.24
+Belarus,BLR,2003,1.232
+Belarus,BLR,2004,1.233
+Belarus,BLR,2005,1.252
+Belarus,BLR,2006,1.335
+Belarus,BLR,2007,1.429
+Belarus,BLR,2008,1.488
+Belarus,BLR,2009,1.509
+Belarus,BLR,2010,1.494
+Belarus,BLR,2011,1.515
+Belarus,BLR,2012,1.62
+Belarus,BLR,2013,1.668
+Belarus,BLR,2014,1.696
+Belarus,BLR,2015,1.724
+Belarus,BLR,2016,1.733
+Belarus,BLR,2017,1.541
+Belarus,BLR,2018,1.448
+Belarus,BLR,2019,1.382
+Belarus,BLR,2020,1.369
+Belarus,BLR,2021,1.371
+Belarus,BLR,2022,1.326
+Belarus,BLR,2023,1.208
+Estonia,EST,1991,1.8
+Estonia,EST,1992,1.71
+Estonia,EST,1993,1.49
+Estonia,EST,1994,1.42
+Estonia,EST,1995,1.38
+Estonia,EST,1996,1.37
+Estonia,EST,1997,1.32
+Estonia,EST,1998,1.28
+Estonia,EST,1999,1.3
+Estonia,EST,2000,1.36
+Estonia,EST,2001,1.32
+Estonia,EST,2002,1.36
+Estonia,EST,2003,1.37
+Estonia,EST,2004,1.47
+Estonia,EST,2005,1.52
+Estonia,EST,2006,1.58
+Estonia,EST,2007,1.69
+Estonia,EST,2008,1.72
+Estonia,EST,2009,1.7
+Estonia,EST,2010,1.72
+Estonia,EST,2011,1.61
+Estonia,EST,2012,1.56
+Estonia,EST,2013,1.52
+Estonia,EST,2014,1.54
+Estonia,EST,2015,1.58
+Estonia,EST,2016,1.6
+Estonia,EST,2017,1.59
+Estonia,EST,2018,1.67
+Estonia,EST,2019,1.66
+Estonia,EST,2020,1.58
+Estonia,EST,2021,1.61
+Estonia,EST,2022,1.41
+Estonia,EST,2023,1.31
+Kazakhstan,KAZ,1991,2.677
+Kazakhstan,KAZ,1992,2.584
+Kazakhstan,KAZ,1993,2.483
+Kazakhstan,KAZ,1994,2.378
+Kazakhstan,KAZ,1995,2.253
+Kazakhstan,KAZ,1996,2.084
+Kazakhstan,KAZ,1997,1.97
+Kazakhstan,KAZ,1998,1.938
+Kazakhstan,KAZ,1999,1.902
+Kazakhstan,KAZ,2000,1.898
+Kazakhstan,KAZ,2001,1.906
+Kazakhstan,KAZ,2002,1.956
+Kazakhstan,KAZ,2003,2.075
+Kazakhstan,KAZ,2004,2.201
+Kazakhstan,KAZ,2005,2.274
+Kazakhstan,KAZ,2006,2.38
+Kazakhstan,KAZ,2007,2.49
+Kazakhstan,KAZ,2008,2.616
+Kazakhstan,KAZ,2009,2.58
+Kazakhstan,KAZ,2010,2.61
+Kazakhstan,KAZ,2011,2.605
+Kazakhstan,KAZ,2012,2.64
+Kazakhstan,KAZ,2013,2.67
+Kazakhstan,KAZ,2014,2.76
+Kazakhstan,KAZ,2015,2.755
+Kazakhstan,KAZ,2016,2.795
+Kazakhstan,KAZ,2017,2.745
+Kazakhstan,KAZ,2018,2.845
+Kazakhstan,KAZ,2019,2.89
+Kazakhstan,KAZ,2020,3.13
+Kazakhstan,KAZ,2021,3.32
+Kazakhstan,KAZ,2022,3.05
+Kazakhstan,KAZ,2023,3.012
+Kyrgyz Republic,KGZ,1991,3.58
+Kyrgyz Republic,KGZ,1992,3.52
+Kyrgyz Republic,KGZ,1993,3.2
+Kyrgyz Republic,KGZ,1994,2.9
+Kyrgyz Republic,KGZ,1995,3.1
+Kyrgyz Republic,KGZ,1996,2.8
+Kyrgyz Republic,KGZ,1997,2.6
+Kyrgyz Republic,KGZ,1998,2.7
+Kyrgyz Republic,KGZ,1999,2.6
+Kyrgyz Republic,KGZ,2000,2.4
+Kyrgyz Republic,KGZ,2001,2.4
+Kyrgyz Republic,KGZ,2002,2.4
+Kyrgyz Republic,KGZ,2003,2.5
+Kyrgyz Republic,KGZ,2004,2.6
+Kyrgyz Republic,KGZ,2005,2.5
+Kyrgyz Republic,KGZ,2006,2.7
+Kyrgyz Republic,KGZ,2007,2.7
+Kyrgyz Republic,KGZ,2008,2.8
+Kyrgyz Republic,KGZ,2009,2.9
+Kyrgyz Republic,KGZ,2010,3.1
+Kyrgyz Republic,KGZ,2011,3.1
+Kyrgyz Republic,KGZ,2012,3.2
+Kyrgyz Republic,KGZ,2013,3.1
+Kyrgyz Republic,KGZ,2014,3.2
+Kyrgyz Republic,KGZ,2015,3.2
+Kyrgyz Republic,KGZ,2016,3.1
+Kyrgyz Republic,KGZ,2017,3.0
+Kyrgyz Republic,KGZ,2018,3.3
+Kyrgyz Republic,KGZ,2019,3.3
+Kyrgyz Republic,KGZ,2020,3.1
+Kyrgyz Republic,KGZ,2021,2.89
+Kyrgyz Republic,KGZ,2022,2.8
+Kyrgyz Republic,KGZ,2023,2.7
+Latvia,LVA,1991,1.86
+Latvia,LVA,1992,1.73
+Latvia,LVA,1993,1.51
+Latvia,LVA,1994,1.39
+Latvia,LVA,1995,1.25
+Latvia,LVA,1996,1.16
+Latvia,LVA,1997,1.11
+Latvia,LVA,1998,1.09
+Latvia,LVA,1999,1.16
+Latvia,LVA,2000,1.25
+Latvia,LVA,2001,1.22
+Latvia,LVA,2002,1.26
+Latvia,LVA,2003,1.32
+Latvia,LVA,2004,1.29
+Latvia,LVA,2005,1.39
+Latvia,LVA,2006,1.46
+Latvia,LVA,2007,1.54
+Latvia,LVA,2008,1.58
+Latvia,LVA,2009,1.46
+Latvia,LVA,2010,1.36
+Latvia,LVA,2011,1.33
+Latvia,LVA,2012,1.44
+Latvia,LVA,2013,1.52
+Latvia,LVA,2014,1.65
+Latvia,LVA,2015,1.7
+Latvia,LVA,2016,1.74
+Latvia,LVA,2017,1.69
+Latvia,LVA,2018,1.6
+Latvia,LVA,2019,1.61
+Latvia,LVA,2020,1.55
+Latvia,LVA,2021,1.57
+Latvia,LVA,2022,1.47
+Latvia,LVA,2023,1.36
+Lithuania,LTU,1991,2.01
+Lithuania,LTU,1992,1.97
+Lithuania,LTU,1993,1.74
+Lithuania,LTU,1994,1.57
+Lithuania,LTU,1995,1.55
+Lithuania,LTU,1996,1.49
+Lithuania,LTU,1997,1.47
+Lithuania,LTU,1998,1.46
+Lithuania,LTU,1999,1.46
+Lithuania,LTU,2000,1.39
+Lithuania,LTU,2001,1.29
+Lithuania,LTU,2002,1.23
+Lithuania,LTU,2003,1.26
+Lithuania,LTU,2004,1.27
+Lithuania,LTU,2005,1.29
+Lithuania,LTU,2006,1.33
+Lithuania,LTU,2007,1.36
+Lithuania,LTU,2008,1.45
+Lithuania,LTU,2009,1.5
+Lithuania,LTU,2010,1.5
+Lithuania,LTU,2011,1.55
+Lithuania,LTU,2012,1.6
+Lithuania,LTU,2013,1.59
+Lithuania,LTU,2014,1.57
+Lithuania,LTU,2015,1.63
+Lithuania,LTU,2016,1.63
+Lithuania,LTU,2017,1.57
+Lithuania,LTU,2018,1.53
+Lithuania,LTU,2019,1.43
+Lithuania,LTU,2020,1.36
+Lithuania,LTU,2021,1.36
+Lithuania,LTU,2022,1.27
+Lithuania,LTU,2023,1.18
+Russian Federation,RUS,1991,1.732
+Russian Federation,RUS,1992,1.552
+Russian Federation,RUS,1993,1.385
+Russian Federation,RUS,1994,1.4
+Russian Federation,RUS,1995,1.337
+Russian Federation,RUS,1996,1.27
+Russian Federation,RUS,1997,1.218
+Russian Federation,RUS,1998,1.232
+Russian Federation,RUS,1999,1.157
+Russian Federation,RUS,2000,1.195
+Russian Federation,RUS,2001,1.223
+Russian Federation,RUS,2002,1.286
+Russian Federation,RUS,2003,1.319
+Russian Federation,RUS,2004,1.344
+Russian Federation,RUS,2005,1.294
+Russian Federation,RUS,2006,1.305
+Russian Federation,RUS,2007,1.416
+Russian Federation,RUS,2008,1.502
+Russian Federation,RUS,2009,1.542
+Russian Federation,RUS,2010,1.567
+Russian Federation,RUS,2011,1.582
+Russian Federation,RUS,2012,1.691
+Russian Federation,RUS,2013,1.707
+Russian Federation,RUS,2014,1.75
+Russian Federation,RUS,2015,1.777
+Russian Federation,RUS,2016,1.762
+Russian Federation,RUS,2017,1.621
+Russian Federation,RUS,2018,1.579
+Russian Federation,RUS,2019,1.504
+Russian Federation,RUS,2020,1.505
+Russian Federation,RUS,2021,1.505
+Russian Federation,RUS,2022,1.416
+Russian Federation,RUS,2023,1.41
+Tajikistan,TJK,1991,5.276
+Tajikistan,TJK,1992,5.056
+Tajikistan,TJK,1993,4.921
+Tajikistan,TJK,1994,4.792
+Tajikistan,TJK,1995,4.664
+Tajikistan,TJK,1996,3.94
+Tajikistan,TJK,1997,4.06
+Tajikistan,TJK,1998,4.07
+Tajikistan,TJK,1999,3.85
+Tajikistan,TJK,2000,3.49
+Tajikistan,TJK,2001,3.49
+Tajikistan,TJK,2002,3.47
+Tajikistan,TJK,2003,3.42
+Tajikistan,TJK,2004,3.507
+Tajikistan,TJK,2005,3.398
+Tajikistan,TJK,2006,3.341
+Tajikistan,TJK,2007,3.367
+Tajikistan,TJK,2008,3.388
+Tajikistan,TJK,2009,3.43
+Tajikistan,TJK,2010,3.457
+Tajikistan,TJK,2011,3.456
+Tajikistan,TJK,2012,3.421
+Tajikistan,TJK,2013,3.433
+Tajikistan,TJK,2014,3.459
+Tajikistan,TJK,2015,3.459
+Tajikistan,TJK,2016,3.384
+Tajikistan,TJK,2017,3.29
+Tajikistan,TJK,2018,3.294
+Tajikistan,TJK,2019,3.281
+Tajikistan,TJK,2020,3.211
+Tajikistan,TJK,2021,3.17
+Tajikistan,TJK,2022,3.127
+Tajikistan,TJK,2023,3.072
+Turkmenistan,TKM,1991,4.145
+Turkmenistan,TKM,1992,3.957
+Turkmenistan,TKM,1993,3.778
+Turkmenistan,TKM,1994,3.623
+Turkmenistan,TKM,1995,3.491
+Turkmenistan,TKM,1996,3.292
+Turkmenistan,TKM,1997,3.18
+Turkmenistan,TKM,1998,3.075
+Turkmenistan,TKM,1999,2.976
+Turkmenistan,TKM,2000,2.9
+Turkmenistan,TKM,2001,2.814
+Turkmenistan,TKM,2002,2.71
+Turkmenistan,TKM,2003,2.667
+Turkmenistan,TKM,2004,2.674
+Turkmenistan,TKM,2005,2.706
+Turkmenistan,TKM,2006,2.724
+Turkmenistan,TKM,2007,2.734
+Turkmenistan,TKM,2008,2.75
+Turkmenistan,TKM,2009,2.794
+Turkmenistan,TKM,2010,2.848
+Turkmenistan,TKM,2011,2.9
+Turkmenistan,TKM,2012,2.955
+Turkmenistan,TKM,2013,3.007
+Turkmenistan,TKM,2014,3.023
+Turkmenistan,TKM,2015,3.033
+Turkmenistan,TKM,2016,2.99
+Turkmenistan,TKM,2017,2.934
+Turkmenistan,TKM,2018,2.875
+Turkmenistan,TKM,2019,2.834
+Turkmenistan,TKM,2020,2.793
+Turkmenistan,TKM,2021,2.754
+Turkmenistan,TKM,2022,2.728
+Turkmenistan,TKM,2023,2.69
+Ukraine,UKR,1991,1.773
+Ukraine,UKR,1992,1.674
+Ukraine,UKR,1993,1.564
+Ukraine,UKR,1994,1.471
+Ukraine,UKR,1995,1.399
+Ukraine,UKR,1996,1.333
+Ukraine,UKR,1997,1.271
+Ukraine,UKR,1998,1.206
+Ukraine,UKR,1999,1.127
+Ukraine,UKR,2000,1.108
+Ukraine,UKR,2001,1.092
+Ukraine,UKR,2002,1.127
+Ukraine,UKR,2003,1.173
+Ukraine,UKR,2004,1.215
+Ukraine,UKR,2005,1.221
+Ukraine,UKR,2006,1.297
+Ukraine,UKR,2007,1.343
+Ukraine,UKR,2008,1.444
+Ukraine,UKR,2009,1.47
+Ukraine,UKR,2010,1.436
+Ukraine,UKR,2011,1.464
+Ukraine,UKR,2012,1.528
+Ukraine,UKR,2013,1.515
+Ukraine,UKR,2014,1.466
+Ukraine,UKR,2015,1.387
+Ukraine,UKR,2016,1.391
+Ukraine,UKR,2017,1.3
+Ukraine,UKR,2018,1.233
+Ukraine,UKR,2019,1.218
+Ukraine,UKR,2020,1.208
+Ukraine,UKR,2021,1.148
+Ukraine,UKR,2022,0.897
+Ukraine,UKR,2023,0.977
+Uzbekistan,UZB,1991,4.19
+Uzbekistan,UZB,1992,4.056
+Uzbekistan,UZB,1993,3.863
+Uzbekistan,UZB,1994,3.66
+Uzbekistan,UZB,1995,3.566
+Uzbekistan,UZB,1996,3.393
+Uzbekistan,UZB,1997,3.186
+Uzbekistan,UZB,1998,2.985
+Uzbekistan,UZB,1999,2.831
+Uzbekistan,UZB,2000,2.696
+Uzbekistan,UZB,2001,2.61
+Uzbekistan,UZB,2002,2.575
+Uzbekistan,UZB,2003,2.503
+Uzbekistan,UZB,2004,2.496
+Uzbekistan,UZB,2005,2.438
+Uzbekistan,UZB,2006,2.461
+Uzbekistan,UZB,2007,2.573
+Uzbekistan,UZB,2008,2.635
+Uzbekistan,UZB,2009,2.559
+Uzbekistan,UZB,2010,2.442
+Uzbekistan,UZB,2011,2.354
+Uzbekistan,UZB,2012,2.337
+Uzbekistan,UZB,2013,2.445
+Uzbekistan,UZB,2014,2.546
+Uzbekistan,UZB,2015,2.583
+Uzbekistan,UZB,2016,2.564
+Uzbekistan,UZB,2017,2.57
+Uzbekistan,UZB,2018,2.713
+Uzbekistan,UZB,2019,2.869
+Uzbekistan,UZB,2020,3.062
+Uzbekistan,UZB,2021,3.273
+Uzbekistan,UZB,2022,3.396
+Uzbekistan,UZB,2023,3.5
