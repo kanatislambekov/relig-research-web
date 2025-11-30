@@ -13,9 +13,23 @@ import streamlit as st
 
 from data_loader import count_stars, load_model_table, parse_numeric
 
+FONT_FAMILY = "Helvetica"
+BASE_FONT = dict(family=FONT_FAMILY, size=14)
+px.defaults.template = "plotly_white"
+px.defaults.width = None
+px.defaults.height = None
 
-st.title("Heat map explorer")
-st.caption("Compare effect sizes across regression models and specifications using an interactive 2D grid.")
+_FIGURE_NUMBER = {"value": 1}
+
+
+def _figure_caption(title: str, description: str) -> None:
+    number = _FIGURE_NUMBER["value"]
+    _FIGURE_NUMBER["value"] += 1
+    st.markdown(f"**Figure {number}. {title}.** {description.strip()}")
+
+
+st.title("Heatmap of Regression Coefficients")
+st.caption("Compare effect sizes across regression models and specifications using an interactive 2D heatmap.")
 
 
 TABLE_FILES: Dict[str, Dict[str, str]] = {
@@ -165,6 +179,7 @@ heatmap_source = table_data.pivot_table(index="variable", columns="metric_label"
 heatmap_source = heatmap_source.sort_index()
 
 if not heatmap_source.empty:
+    n_rows, n_cols = heatmap_source.shape
     z_matrix = heatmap_source.to_numpy(dtype=float)
     finite_values = z_matrix[np.isfinite(z_matrix)]
     if finite_values.size == 0:
@@ -205,15 +220,27 @@ if not heatmap_source.empty:
     )
 
     heatmap_fig = go.Figure(data=[base_heatmap, nan_overlay])
+    width = min(max(900, n_cols * 110), 2000)
+    height = min(max(520, n_rows * 32), 1400)
     heatmap_fig.update_layout(
-        margin=dict(l=40, r=40, t=40, b=40),
-        title=dict(text=f"2D projection – {table_options[selected_table]}", x=0.5),
+        margin=dict(l=40, r=40, t=40, b=60),
         xaxis_title="Model / specification",
         yaxis_title="Variable",
-        xaxis=dict(tickangle=0, automargin=True),
+        xaxis=dict(tickangle=30, automargin=True),
         yaxis=dict(automargin=True),
+        font=BASE_FONT,
+        width=width,
+        height=height,
     )
-    st.plotly_chart(heatmap_fig, use_container_width=True)
+    st.plotly_chart(heatmap_fig, use_container_width=False)
+    _figure_caption(
+        "Interactive heat map of model coefficients",
+        """
+        Cells encode effect magnitudes for the chosen regression table and metric; darker tiles reflect larger
+        absolute values after the selected transformation. Hover to read the exact coefficient and significance,
+        and use the sidebar filters to focus on specific contexts or specification blocks.
+        """,
+    )
 else:
     st.info("Not enough data to construct the 2D heat map for the current filters.")
 

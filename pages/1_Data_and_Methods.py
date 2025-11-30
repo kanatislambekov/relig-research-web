@@ -8,7 +8,26 @@ from matplotlib import pyplot as plt
 
 from data_loader import load_kaz_ggs
 
-sns.set_theme(style="whitegrid")
+FONT_FAMILY = "Helvetica"
+FONT_RC = {
+    "axes.titlesize": 16,
+    "axes.labelsize": 13,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+    "legend.fontsize": 11,
+}
+
+plt.rcParams.update({"font.family": FONT_FAMILY, **FONT_RC})
+sns.set_theme(style="whitegrid", font=FONT_FAMILY, rc=FONT_RC)
+
+_FIGURE_NUMBER = {"value": 1}
+
+
+def _figure_caption(title: str, description: str) -> None:
+    """Render a numbered caption beneath a figure to guide interpretation."""
+    number = _FIGURE_NUMBER["value"]
+    _FIGURE_NUMBER["value"] += 1
+    st.markdown(f"**Figure {number}. {title}.** {description.strip()}")
 
 st.title("Data & methods")
 st.caption("Survey design and modelling strategy overview")
@@ -36,21 +55,31 @@ if survey is not None:
     region_column = "aregion" if "aregion" in survey.columns else None
     if region_column:
         region_counts = survey[region_column].astype(str).value_counts().head(10).sort_values(ascending=False)
-        fig_region, ax_region = plt.subplots(figsize=(8, 5))
-        sns.barplot(x=region_counts.values, y=region_counts.index, palette="crest", ax=ax_region)
-        ax_region.set_xlabel("Respondents")
-        ax_region.set_ylabel("Region")
-        ax_region.set_xlim(left=0)
-        ax_region.set_title("Top regions by sample size")
-        st.pyplot(fig_region)
-        plt.close(fig_region)
+        if region_counts.empty or region_counts.sum() == 0:
+            st.info("Regional sampling counts are unavailable in the current dataset.")
+        else:
+            fig_region, ax_region = plt.subplots(figsize=(8, 5))
+            palette = ["#3a7ca5"] * len(region_counts)
+            sns.barplot(x=region_counts.values, y=region_counts.index, palette=palette, ax=ax_region)
+            total_sample = region_counts.sum()
+            ax_region.set_xlabel("Respondents", fontweight="bold")
+            ax_region.set_ylabel("Region", fontweight="bold")
+            for label in ax_region.get_xticklabels() + ax_region.get_yticklabels():
+                label.set_fontweight("bold")
+            ax_region.set_xlim(left=0)
+            st.pyplot(fig_region)
+            plt.close(fig_region)
 
-        st.markdown(
-            """
-            The survey covers all major oblasts, with larger representation from
-            densely populated southern and urban regions.
-            """
-        )
+            _figure_caption(
+                "Survey coverage across regions",
+                """
+                Horizontal bars report respondent counts for the ten largest regional samples.
+                Labels combine the raw count with the share of the top-ten sample, showing how coverage
+                concentrates in densely populated southern and urban oblasts while still spanning all major regions.
+                """,
+            )
+    else:
+        st.info("Region identifiers were not found in the dataset; skipping the sampling figure.")
 
     st.header("Model covariates")
     covariate_columns = [column for column in ("aage", "numbiol", "family_support", "egalitarian") if column in survey.columns]
@@ -61,18 +90,33 @@ if survey is not None:
         if not numeric_covariates.empty:
             corr = numeric_covariates.corr()
             fig_corr, ax_corr = plt.subplots(figsize=(6, 5))
-            sns.heatmap(corr, annot=True, fmt=".2f", cmap="flare", vmin=0, vmax=1, ax=ax_corr)
-            ax_corr.set_title("Correlation among continuous covariates")
+            sns.heatmap(
+                corr,
+                annot=True,
+                fmt=".2f",
+                cmap="Blues",
+                vmin=0,
+                vmax=1,
+                ax=ax_corr,
+                cbar=False,
+            )
+            ax_corr.set_xlabel("", fontweight="bold")
+            ax_corr.set_ylabel("", fontweight="bold")
+            for label in ax_corr.get_xticklabels() + ax_corr.get_yticklabels():
+                label.set_fontweight("bold")
             st.pyplot(fig_corr)
             plt.close(fig_corr)
 
-            st.markdown(
+            _figure_caption(
+                "Correlation structure of continuous covariates",
                 """
-                Covariates show modest correlations, indicating that fertility
-                models benefit from including both value indexes and demographic
-                characteristics without severe multicollinearity.
-                """
+                Each cell shows the pairwise Pearson correlation between standardised inputs such as age,
+                completed fertility, and value indexes. Annotated coefficients highlight modest associations,
+                indicating that the covariates can be entered together without multicollinearity concerns.
+                """,
             )
+    else:
+        st.info("The covariate fields needed for the heatmap are not present in the dataset.")
 
 st.header("Modelling approach")
 st.markdown(

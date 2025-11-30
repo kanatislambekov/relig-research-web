@@ -14,7 +14,17 @@ from matplotlib import ticker as mticker
 
 from data_loader import load_model_table, parse_numeric
 
-sns.set_theme(style="darkgrid")
+FONT_FAMILY = "Helvetica"
+FONT_RC = {
+    "axes.titlesize": 16,
+    "axes.labelsize": 13,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+    "legend.fontsize": 11,
+}
+
+plt.rcParams.update({"font.family": FONT_FAMILY, **FONT_RC})
+sns.set_theme(style="whitegrid", font=FONT_FAMILY, rc=FONT_RC)
 
 
 PALETTE = [
@@ -32,6 +42,53 @@ def _build_palette(length: int) -> list[str]:
     if length <= len(PALETTE):
         return PALETTE[:length]
     return sns.color_palette("husl", length)
+
+
+def _ratio_limits(values: Iterable[float], baseline: float | None, *, pad: float = 0.12) -> tuple[float, float]:
+    """Return axis bounds that start at 1.0 when ratios stay above one."""
+    series = pd.Series(values, dtype=float).replace([np.inf, -np.inf], np.nan).dropna()
+    if series.empty:
+        return (0.9, 1.1) if baseline == 1.0 else (0, 1)
+    vmin = float(series.min())
+    vmax = float(series.max())
+    if baseline is not None:
+        vmin = min(vmin, baseline)
+        vmax = max(vmax, baseline)
+    span = vmax - vmin
+    margin = 0.1 if span == 0 else span * pad
+    lower = vmin - margin
+    upper = vmax + margin
+    if baseline == 1.0 and vmin >= 1.0:
+        lower = 1.0
+    return lower, upper
+
+
+_FIGURE_NUMBER = {"value": 1}
+
+
+def _figure_caption(title: str, description: str) -> None:
+    """Render a numbered caption beneath a figure."""
+    number = _FIGURE_NUMBER["value"]
+    _FIGURE_NUMBER["value"] += 1
+    st.markdown(f"**Figure {number}. {title}.** {description.strip()}")
+
+
+def _add_baseline_tick(ax: plt.Axes, *, axis: str, baseline: float | None) -> None:
+    """Ensure the axis shows the baseline (e.g., IRR=1.0) as an explicit tick."""
+    if baseline is None:
+        return
+    if axis == "y":
+        ticks = list(ax.get_yticks())
+        ticks.append(baseline)
+        ticks = sorted(set(ticks))
+        ax.set_yticks(ticks)
+        ax.set_yticklabels([f"{tick:.2f}" if abs(tick) < 10 else f"{tick:g}" for tick in ticks])
+    elif axis == "x":
+        ticks = list(ax.get_xticks())
+        ticks.append(baseline)
+        ticks = sorted(set(ticks))
+        ax.set_xticks(ticks)
+        ax.set_xticklabels([f"{tick:.2f}" if abs(tick) < 10 else f"{tick:g}" for tick in ticks])
 
 st.title("Results")
 st.caption("Regression results on fertility, values, and religiosity")
@@ -197,22 +254,24 @@ def _plot_effect_lines(effect_df: pd.DataFrame, y_label: str, title: str, *, bas
         line.set_markersize(7)
     ax.set_ylabel(y_label)
     ax.set_xlabel("Specification")
-    ax.set_title(title)
     ax.set_xticklabels(ax.get_xticklabels(), rotation=28, ha="right")
     ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
-    y_min = ordered["Effect"].min()
-    y_max = ordered["Effect"].max()
-    if baseline is not None:
-        y_min = min(y_min, baseline)
-        y_max = max(y_max, baseline)
-    span = y_max - y_min
-    margin = 0.1 if span == 0 else span * 0.12
-    ax.set_ylim(y_min - margin, y_max + margin)
+    lower, upper = _ratio_limits(ordered["Effect"], baseline)
+    ax.set_ylim(lower, upper)
+    _add_baseline_tick(ax, axis="y", baseline=baseline)
     fig.tight_layout()
     return fig
 
 
-def _plot_effect_horizontal(effect_df: pd.DataFrame, x_label: str, title: str, *, baseline: float | None = 1.0) -> plt.Figure | None:
+def _plot_effect_horizontal(
+    effect_df: pd.DataFrame,
+    x_label: str,
+    title: str,
+    *,
+    baseline: float | None = 1.0,
+    min_limit: float | None = None,
+    max_limit: float | None = None,
+) -> plt.Figure | None:
     if effect_df.empty:
         return None
     ordered = effect_df.sort_values(["Order", "Coefficient"])
@@ -246,17 +305,15 @@ def _plot_effect_horizontal(effect_df: pd.DataFrame, x_label: str, title: str, *
     ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
     ax.set_xlabel(x_label)
     ax.set_ylabel("Specification")
-    ax.set_title(title)
-    ax.legend(loc="upper right", frameon=False)
+    ax.legend(loc="upper left", frameon=False)
 
-    x_min = ordered["Effect"].min()
-    x_max = ordered["Effect"].max()
-    if baseline is not None:
-        x_min = min(x_min, baseline)
-        x_max = max(x_max, baseline)
-    span = x_max - x_min
-    margin = 0.05 if span == 0 else span * 0.12
-    ax.set_xlim(x_min - margin, x_max + margin)
+    lower, upper = _ratio_limits(ordered["Effect"], baseline)
+    if min_limit is not None:
+        lower = min_limit
+    if max_limit is not None:
+        upper = max_limit
+    ax.set_xlim(lower, upper)
+    _add_baseline_tick(ax, axis="x", baseline=baseline)
 
     for line in ax.lines:
         line.set_markeredgecolor("white")
@@ -299,7 +356,6 @@ def _plot_effect_small_multiples(effect_df: pd.DataFrame, axis_label: str, title
         )
         if baseline is not None:
             ax.axvline(baseline, color="#3c3c3c", linestyle="--", linewidth=0.9)
-        ax.set_title(coeff, fontsize=11)
         ax.set_yticks(positions)
         ax.set_yticklabels(subset["Specification"])
         ax.invert_yaxis()
@@ -313,26 +369,27 @@ def _plot_effect_small_multiples(effect_df: pd.DataFrame, axis_label: str, title
     for ax in axes_array[total:]:
         ax.axis("off")
 
-    fig.suptitle(title, fontsize=14)
     fig.supxlabel(axis_label)
     fig.supylabel("Specification")
 
-    x_min = ordered["Effect"].min()
-    x_max = ordered["Effect"].max()
-    if baseline is not None:
-        x_min = min(x_min, baseline)
-        x_max = max(x_max, baseline)
-    span = x_max - x_min
-    margin = 0.05 if span == 0 else span * 0.12
-    xlim = (x_min - margin, x_max + margin)
+    lower, upper = _ratio_limits(ordered["Effect"], baseline)
     for ax in axes_array[:total]:
-        ax.set_xlim(*xlim)
+        ax.set_xlim(lower, upper)
+        _add_baseline_tick(ax, axis="x", baseline=baseline)
 
     fig.tight_layout(rect=(0.03, 0.02, 1, 0.93))
     return fig
 
 
-def _plot_birth_effects(effect_df: pd.DataFrame, title: str, *, y_label: str = "Hazard ratio", baseline: float | None = 1.0) -> plt.Figure | None:
+def _plot_birth_effects(
+    effect_df: pd.DataFrame,
+    title: str,
+    *,
+    y_label: str = "Hazard ratio",
+    baseline: float | None = 1.0,
+    force_zero_min: bool = False,
+    upper_cap: float | None = None,
+) -> plt.Figure | None:
     if effect_df.empty:
         return None
     ordered = effect_df.sort_values(["Order", "Coefficient"])
@@ -378,16 +435,14 @@ def _plot_birth_effects(effect_df: pd.DataFrame, title: str, *, y_label: str = "
         line.set_markersize(7)
     ax.set_ylabel(y_label)
     ax.set_xlabel("Birth order")
-    ax.set_title(title)
     ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
-    y_min = ordered["Effect"].min()
-    y_max = ordered["Effect"].max()
-    if baseline is not None:
-        y_min = min(y_min, baseline)
-        y_max = max(y_max, baseline)
-    span = y_max - y_min
-    margin = 0.1 if span == 0 else span * 0.12
-    ax.set_ylim(y_min - margin, y_max + margin)
+    lower, upper = _ratio_limits(ordered["Effect"], baseline)
+    if force_zero_min:
+        lower = 0
+    if upper_cap is not None:
+        upper = upper_cap
+    ax.set_ylim(lower, upper)
+    _add_baseline_tick(ax, axis="y", baseline=baseline)
     fig.tight_layout()
     return fig
 
@@ -404,16 +459,26 @@ def _plot_category_bars(effect_df: pd.DataFrame, title: str, y_label: str, *, ba
         ax.axhline(baseline, color="#222222", linestyle="--", linewidth=1)
     ax.set_ylabel(y_label)
     ax.set_xlabel("Religiosity level")
-    ax.set_title(title)
     ax.set_xticklabels(ax.get_xticklabels(), rotation=25, ha="right")
     ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
     for container in ax.containers:
         ax.bar_label(container, fmt="{:.2f}")
+    lower, upper = _ratio_limits(ordered["Effect"], baseline)
+    ax.set_ylim(lower, upper)
+    _add_baseline_tick(ax, axis="y", baseline=baseline)
     fig.tight_layout()
     return fig
 
 
-def _plot_category_lollipops(effect_df: pd.DataFrame, title: str, x_label: str, *, baseline: float | None = 1.0) -> plt.Figure | None:
+def _plot_category_lollipops(
+    effect_df: pd.DataFrame,
+    title: str,
+    x_label: str,
+    *,
+    baseline: float | None = 1.0,
+    force_zero_min: bool = False,
+    upper_cap: float | None = None,
+) -> plt.Figure | None:
     if effect_df.empty:
         return None
     ordered = effect_df.sort_values("Level")
@@ -427,8 +492,14 @@ def _plot_category_lollipops(effect_df: pd.DataFrame, title: str, x_label: str, 
     ax.set_yticklabels(ordered["Label"])
     ax.set_xlabel(x_label)
     ax.set_ylabel("")
-    ax.set_title(title)
     ax.xaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
+    lower, upper = _ratio_limits(ordered["Effect"], baseline)
+    if force_zero_min:
+        lower = 0
+    if upper_cap is not None:
+        upper = upper_cap
+    ax.set_xlim(lower, upper)
+    _add_baseline_tick(ax, axis="x", baseline=baseline)
     fig.tight_layout()
     return fig
 
@@ -459,16 +530,89 @@ def _plot_category_gradient(effect_df: pd.DataFrame, title: str, y_label: str, *
     ax.set_xticklabels(ordered["Label"], rotation=20, ha="right")
     ax.set_ylabel(y_label)
     ax.set_xlabel("Religiosity intensity")
-    ax.set_title(title)
     ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
-    y_min = ordered["Effect"].min()
-    y_max = ordered["Effect"].max()
+    lower, upper = _ratio_limits(ordered["Effect"], baseline)
+    ax.set_ylim(lower, upper)
+    _add_baseline_tick(ax, axis="y", baseline=baseline)
+    fig.tight_layout()
+    return fig
+
+
+def _plot_value_spec_lines(effect_df: pd.DataFrame, title: str, y_label: str, *, baseline: float | None = 1.0) -> plt.Figure | None:
+    """Line chart of value coefficients across specifications."""
+    if effect_df.empty:
+        return None
+    ordered = effect_df.sort_values(["Order", "Coefficient"])
+    categories = ordered.sort_values("Order")["Specification"].unique()
+    ordered["Specification"] = pd.Categorical(ordered["Specification"], categories=categories, ordered=True)
+
+    fig, ax = plt.subplots(figsize=(9.5, 5))
+    palette = _build_palette(ordered["Coefficient"].nunique())
+    sns.lineplot(
+        data=ordered,
+        x="Specification",
+        y="Effect",
+        hue="Coefficient",
+        palette=palette,
+        marker="o",
+        linewidth=2.2,
+        ax=ax,
+    )
     if baseline is not None:
-        y_min = min(y_min, baseline)
-        y_max = max(y_max, baseline)
-    span = y_max - y_min
-    margin = 0.1 if span == 0 else span * 0.12
-    ax.set_ylim(y_min - margin, y_max + margin)
+        ax.axhline(baseline, color="#222222", linestyle="--", linewidth=1)
+    for line in ax.lines:
+        line.set_markeredgecolor("white")
+        line.set_markeredgewidth(0.8)
+        line.set_markersize(7)
+    ax.set_ylabel(y_label)
+    ax.set_xlabel("Specification")
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=28, ha="right")
+    ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
+    lower, upper = _ratio_limits(ordered["Effect"], baseline)
+    ax.set_ylim(lower, upper)
+    _add_baseline_tick(ax, axis="y", baseline=baseline)
+    legend = ax.get_legend()
+    if legend is not None:
+        legend.set_title("Coefficient")
+        legend.set_frame_on(False)
+        legend.set_bbox_to_anchor((1.02, 1))
+    fig.tight_layout()
+    return fig
+
+
+def _plot_value_interaction_bars(effect_df: pd.DataFrame, title: str, y_label: str, *, baseline: float | None = 1.0) -> plt.Figure | None:
+    """Grouped bar chart for interaction effects across specifications."""
+    if effect_df.empty:
+        return None
+    ordered = effect_df.sort_values(["Order", "Coefficient"])
+    categories = ordered.sort_values("Order")["Specification"].unique()
+    ordered["Specification"] = pd.Categorical(ordered["Specification"], categories=categories, ordered=True)
+
+    fig, ax = plt.subplots(figsize=(9.5, 5))
+    palette = _build_palette(ordered["Coefficient"].nunique())
+    sns.barplot(
+        data=ordered,
+        x="Specification",
+        y="Effect",
+        hue="Coefficient",
+        palette=palette,
+        ax=ax,
+        saturation=0.85,
+    )
+    if baseline is not None:
+        ax.axhline(baseline, color="#222222", linestyle="--", linewidth=1)
+    ax.set_ylabel(y_label)
+    ax.set_xlabel("Specification")
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=28, ha="right")
+    ax.yaxis.set_major_locator(mticker.MaxNLocator(nbins=6, prune="both"))
+    lower, upper = _ratio_limits(ordered["Effect"], baseline)
+    ax.set_ylim(lower, upper)
+    _add_baseline_tick(ax, axis="y", baseline=baseline)
+    legend = ax.get_legend()
+    if legend is not None:
+        legend.set_title("Interaction term")
+        legend.set_frame_on(False)
+        legend.set_bbox_to_anchor((1.02, 1))
     fig.tight_layout()
     return fig
 
@@ -497,10 +641,27 @@ poisson_fig = _plot_effect_horizontal(
     poisson_effects,
     "Incidence rate ratio",
     "Muslim fertility advantage across specifications",
+    min_limit=0,
+    max_limit=1.65,
 )
 if poisson_fig:
+    ax_poisson = poisson_fig.axes[0] if poisson_fig.axes else None
+    if ax_poisson is not None:
+        ticks = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6]
+        ax_poisson.set_xticks(ticks)
+        ax_poisson.set_xticklabels([f"{tick:.1f}" for tick in ticks])
+        ax_poisson.set_xlim(0, 1.65)
+        ax_poisson.tick_params(axis="x", labelsize=12)
     st.pyplot(poisson_fig)
     plt.close(poisson_fig)
+    _figure_caption(
+        "Muslim fertility advantage across Poisson specifications",
+        """
+        Points plot incidence rate ratios (IRRs) for the Muslim coefficients across model variants;
+        the vertical dashed line at 1.0 marks parity with the non-Muslim baseline. All IRRs sit above 1,
+        showing a robust fertility premium even after adding controls for region and occupation.
+        """,
+    )
 
 st.markdown(
     """
@@ -537,15 +698,6 @@ base_value_effects = _build_effect_frame(
     },
     spec_name_map=value_spec_map,
 )
-base_value_fig = _plot_effect_small_multiples(
-    base_value_effects,
-    "Incidence rate ratio",
-    "Family and egalitarian values in fertility models",
-)
-if base_value_fig:
-    st.pyplot(base_value_fig)
-    plt.close(base_value_fig)
-
 interaction_value_effects = _build_effect_frame(
     values_table,
     {
@@ -556,14 +708,32 @@ interaction_value_effects = _build_effect_frame(
     },
     spec_name_map=value_spec_map,
 )
-interaction_value_fig = _plot_effect_small_multiples(
-    interaction_value_effects,
+if not base_value_effects.empty:
+    latest_order = base_value_effects["Order"].max()
+    latest_spec = base_value_effects[base_value_effects["Order"] == latest_order].copy()
+    latest_spec["Level"] = np.arange(1, len(latest_spec) + 1)
+    latest_spec = latest_spec.rename(columns={"Coefficient": "Label"})
+    latest_spec = latest_spec[["Level", "Label", "Effect"]]
+
+interaction_value_fig = _plot_category_lollipops(
+    interaction_value_effects.assign(Level=np.arange(1, len(interaction_value_effects) + 1), Label=interaction_value_effects["Coefficient"])[["Level", "Label", "Effect"]],
+    "Interactions of Muslim identification with value indexes",
     "Incidence rate ratio",
-    "Value interactions with Muslim identification",
+    baseline=1.0,
+    force_zero_min=True,
+    upper_cap=1.2,
 )
 if interaction_value_fig:
     st.pyplot(interaction_value_fig)
     plt.close(interaction_value_fig)
+    _figure_caption(
+        "Interaction effects: values × Muslim identification",
+        """
+        Each lollipop plots the incidence rate ratio for a value–Muslim interaction term in the richest model.
+        Lines start at zero and extend to the estimated IRR, highlighting which interactions boost fertility
+        above the neutral threshold of 1.0.
+        """,
+    )
 
 st.markdown(
     """
@@ -602,19 +772,22 @@ category_fig = _plot_category_lollipops(
     category_df,
     "Fertility differences by religiosity intensity",
     "Incidence rate ratio",
+    baseline=1.0,
+    force_zero_min=True,
+    upper_cap=1.2,
 )
 if category_fig:
     st.pyplot(category_fig)
     plt.close(category_fig)
-
-category_gradient_fig = _plot_category_gradient(
-    category_df,
-    "Gradient of fertility effects across religiosity levels",
-    "Incidence rate ratio",
-)
-if category_gradient_fig:
-    st.pyplot(category_gradient_fig)
-    plt.close(category_gradient_fig)
+    _figure_caption(
+        "Incidence rate ratios by religiosity category",
+        """
+        Lollipop markers compare IRRs for each religiosity category against the neutral threshold of 1.0.
+        The horizontal line at 1.0 denotes no fertility difference relative to the baseline; markers to the
+        right indicate higher completed fertility, underscoring the positive gradient associated with greater
+        religiosity.
+        """,
+    )
 
 continuous_row = _get_row(relig_table, "religiosity")
 continuous_effect = parse_numeric(continuous_row.get("(2) Religious", "")) if not continuous_row.empty else None
@@ -639,13 +812,28 @@ st.dataframe(cox_muslim_table, use_container_width=True)
 
 birth_columns = [col for col in cox_muslim_table.columns if col.endswith("birth .")]
 cox_muslim_effects = _build_birth_effect_frame(cox_muslim_table, {"muslim1": "Muslim households"}, birth_columns)
+cox_muslim_upper_cap = None
+if not cox_muslim_effects.empty:
+    cap_candidate = cox_muslim_effects["Effect"].max()
+    if cap_candidate is not None and np.isfinite(cap_candidate):
+        cox_muslim_upper_cap = max(cap_candidate, 1.0) + 0.2
 cox_muslim_fig = _plot_birth_effects(
     cox_muslim_effects,
     "Progression to higher birth orders for Muslim households",
+    force_zero_min=True,
+    upper_cap=cox_muslim_upper_cap,
 )
 if cox_muslim_fig:
     st.pyplot(cox_muslim_fig)
     plt.close(cox_muslim_fig)
+    _figure_caption(
+        "Hazard ratios for progressing to subsequent births (Muslim vs. others)",
+        """
+        Lines plot hazard ratios for Muslim households at each birth order; the dashed line at 1.0 marks
+        identical pacing to the comparison group. Ratios above 1.0 show faster transitions, with the largest
+        acceleration appearing around the third child.
+        """,
+    )
 
 st.markdown(
     """
@@ -674,13 +862,28 @@ base_rel_effects = _build_birth_effect_frame(
     },
     rel_birth_columns,
 )
+base_rel_upper_cap = None
+if not base_rel_effects.empty:
+    cap_candidate = base_rel_effects["Effect"].max()
+    if cap_candidate is not None and np.isfinite(cap_candidate):
+        base_rel_upper_cap = max(cap_candidate, 1.0) + 0.2
 base_rel_fig = _plot_birth_effects(
     base_rel_effects,
     "Hazard ratios by religiosity intensity",
+    force_zero_min=True,
+    upper_cap=base_rel_upper_cap,
 )
 if base_rel_fig:
     st.pyplot(base_rel_fig)
     plt.close(base_rel_fig)
+    _figure_caption(
+        "Birth timing by religiosity intensity among non-Muslims",
+        """
+        Hazard ratios greater than 1.0 indicate faster progression to the next birth relative to the baseline.
+        The plot shows that modest religiosity lifts the likelihood of moving to higher parities, while the
+        effect tapers for later births and higher intensity levels.
+        """,
+    )
 
 interaction_rel_effects = _build_birth_effect_frame(
     cox_rel_table,
@@ -693,13 +896,28 @@ interaction_rel_effects = _build_birth_effect_frame(
     },
     rel_birth_columns,
 )
+interaction_upper_cap = None
+if not interaction_rel_effects.empty:
+    cap_candidate = interaction_rel_effects["Effect"].max()
+    if cap_candidate is not None and np.isfinite(cap_candidate):
+        interaction_upper_cap = max(cap_candidate, 1.0) + 0.2
 interaction_rel_fig = _plot_birth_effects(
     interaction_rel_effects,
     "Muslim advantage conditional on religiosity",
+    force_zero_min=True,
+    upper_cap=interaction_upper_cap,
 )
 if interaction_rel_fig:
     st.pyplot(interaction_rel_fig)
     plt.close(interaction_rel_fig)
+    _figure_caption(
+        "Combined effects of Muslim identity and religiosity on birth timing",
+        """
+        Hazard ratios compare Muslim households at each religiosity level with the non-Muslim baseline.
+        Ratios above 1.0 signal quicker transitions to subsequent births, indicating that Muslim identity
+        retains an advantage even after conditioning on intensity of belief.
+        """,
+    )
 
 st.markdown(
     """

@@ -18,6 +18,14 @@ from data_loader import load_kaz_ggs
 
 
 DATA_DIR = Path("/Users/kiramaya/Documents/GitHub/relig-research-web/Data")
+FONT_FAMILY = "Helvetica"
+FONT_RC = {
+    "axes.titlesize": 16,
+    "axes.labelsize": 13,
+    "xtick.labelsize": 12,
+    "ytick.labelsize": 12,
+    "legend.fontsize": 11,
+}
 REGION_NAME_MAP = {
     "ABAY REGION": "Abai",
     "AKMOLA REGION": "Akmola",
@@ -64,7 +72,17 @@ START_YEAR = 1991
 END_YEAR = pd.Timestamp.now().year
 POST_SOVIET_TFR_PATH = DATA_DIR / "post_soviet_tfr.csv"
 
-sns.set_theme(style="darkgrid")
+plt.rcParams.update({"font.family": FONT_FAMILY, **FONT_RC})
+sns.set_theme(style="whitegrid", font=FONT_FAMILY, rc=FONT_RC)
+
+_FIGURE_NUMBER = {"value": 1}
+
+
+def _figure_caption(title: str, description: str) -> None:
+    """Render a numbered academic-style caption beneath a figure."""
+    number = _FIGURE_NUMBER["value"]
+    _FIGURE_NUMBER["value"] += 1
+    st.markdown(f"**Figure {number}. {title}.** {description.strip()}")
 
 st.title("Descriptive statistics")
 st.caption("Key descriptive patterns and national fertility trends")
@@ -156,16 +174,19 @@ else:
 
     fig_tfr, ax_tfr = plt.subplots(figsize=(9, 5))
     highlight_color = "#1b8a5a"
-    baseline_color = "#b3b3b3"
+    base_color = "#404040"
+    replacement_level = 2.1
+    east_europe_group = {"Belarus", "Estonia", "Latvia", "Lithuania", "Moldova", "Russia", "Ukraine"}
+    east_endpoints: list[tuple[float, float]] = []
 
     for country, code in POST_SOVIET_COUNTRIES:
         country_rows = plot_frame[plot_frame["ISO3"] == code].sort_values("Year")
         if country_rows.empty:
             continue
         is_kazakhstan = country == "Kazakhstan"
-        color = highlight_color if is_kazakhstan else baseline_color
-        linewidth = 2.5 if is_kazakhstan else 1.2
-        alpha = 1.0 if is_kazakhstan else 0.8
+        color = highlight_color if is_kazakhstan else base_color
+        linewidth = 2.8 if is_kazakhstan else 1.6
+        alpha = 0.95 if is_kazakhstan else 0.65
 
         ax_tfr.plot(
             country_rows["Year"],
@@ -177,36 +198,76 @@ else:
         )
 
         final_point = country_rows.iloc[-1]
+        endpoint_y = float(final_point["Total fertility rate"])
+        endpoint_x = float(final_point["Year"]) + 0.1
+        label_offset = {"Tajikistan": 0.05, "Kyrgyzstan": -0.1}.get(country, 0.0)
+        if country in east_europe_group:
+            east_endpoints.append((endpoint_x, endpoint_y))
+            continue
         ax_tfr.text(
-            final_point["Year"] + 0.1,
-            final_point["Total fertility rate"],
+            endpoint_x,
+            endpoint_y + label_offset,
             country,
             color=color,
-            fontsize=8,
+            fontsize=12,
             va="center",
+            ha="left",
+            weight="bold" if is_kazakhstan else "normal",
+        )
+
+    if east_endpoints:
+        avg_x = max(x for x, _ in east_endpoints)  # latest year
+        avg_y = sum(y for _, y in east_endpoints) / len(east_endpoints)
+        min_y = min(y for _, y in east_endpoints)
+        max_y = max(y for _, y in east_endpoints)
+        bracket_x = avg_x + 0.07
+        ax_tfr.vlines(bracket_x, min_y, max_y, colors=base_color, linestyles="-", linewidth=1)
+        ax_tfr.plot([bracket_x], [avg_y], marker="o", color=base_color, markersize=4)
+        ax_tfr.text(
+            bracket_x + 0.15,
+            avg_y,
+            "Eastern Europe",
+            color=base_color,
+            fontsize=12,
+            va="center",
+            ha="left",
         )
 
     if not plot_frame.empty:
         ax_tfr.set_xlim(plot_frame["Year"].min(), plot_frame["Year"].max() + 1.2)
-        ax_tfr.set_ylim(
-            bottom=max(0, plot_frame["Total fertility rate"].min() - 0.2),
-            top=plot_frame["Total fertility rate"].max() + 0.2,
-        )
+        lower_bound = max(0, plot_frame["Total fertility rate"].min() - 0.2)
+        upper_bound = max(plot_frame["Total fertility rate"].max() + 0.2, replacement_level + 0.2)
+        ax_tfr.set_ylim(bottom=lower_bound, top=upper_bound)
     ax_tfr.set_ylabel("Births per woman")
     ax_tfr.set_xlabel("Year")
+    ax_tfr.tick_params(axis="both", which="major", labelsize=12)
     ax_tfr.grid(True, axis="y", alpha=0.3, linestyle="--")
-    if any(country == "Kazakhstan" for country, _ in POST_SOVIET_COUNTRIES):
-        ax_tfr.legend(loc="upper left")
+
+    # Replacement-level marker
+    ax_tfr.axhline(replacement_level, color="#d62828", linestyle="--", linewidth=2)
+    x_max = ax_tfr.get_xlim()[1]
+    ax_tfr.text(
+        x_max - 1.3,
+        replacement_level + 0.05,
+        "Replacement level (2.1)",
+        color="#d62828",
+        fontsize=12,
+        ha="right",
+        va="bottom",
+        bbox=dict(boxstyle="round,pad=0.2", facecolor="white", edgecolor="#d62828", alpha=0.8),
+    )
+
     st.pyplot(fig_tfr)
     plt.close(fig_tfr)
 
-    st.markdown(
+    _figure_caption(
+        "Total fertility rates by country, last decade",
         """
-        Kazakhstan remains among the higher-fertility post-Soviet states,
-        exceeded only by its Central Asian neighbours. The Baltic states cluster
-        near replacement level, while the South Caucasus has converged toward
-        the European average over the past decade.
-        """
+        Each line tracks births per woman over the last decade; the thicker green series highlights
+        Kazakhstan. Labels at the series endpoints make it easy to scan relative levels without a legend.
+        The chart shows Kazakhstan remaining above replacement while Baltic states cluster near two births
+        and the South Caucasus converges toward the European average.
+        """,
     )
 
 
@@ -282,20 +343,23 @@ else:
             hover_name="Region",
             color_continuous_scale="Viridis",
             range_color=color_range,
+            template="plotly_white",
         )
         fig_map.update_geos(fitbounds="locations", visible=False)
         fig_map.update_layout(
             margin={"r": 0, "t": 10, "l": 0, "b": 0},
             coloraxis_colorbar=dict(title="Births per woman"),
+            font=dict(family=FONT_FAMILY, size=14),
         )
         st.plotly_chart(fig_map, use_container_width=True)
 
-        st.markdown(
+        _figure_caption(
+            f"Regional total fertility rates, {selected_year}",
             """
-            Regional total fertility rates reveal pronounced spatial contrasts. Western oil
-            regions and the southern oblasts sustain the highest parity, while urban centres
-            such as Astana and Almaty trail the national average.
-            """
+            Darker shading marks regions with higher births per woman. Hover labels report exact
+            rates for each oblast. Western oil regions and the southern oblasts sustain the
+            highest parity, while urban centres such as Astana and Almaty trail the national average.
+            """,
         )
 
 # --- Load survey data --------------------------------------------------------
@@ -360,6 +424,14 @@ if not age_subset.empty:
         respondents show a flatter distribution across older ages.
         """
     )
+    _figure_caption(
+        "Age density by religious denomination",
+        """
+        Kernel density curves show the distribution of respondent ages within each denomination.
+        Taller peaks indicate more respondents at a given age; the Muslim curve peaks earlier,
+        signalling a younger population structure, while the Non-Muslim curve spreads into older ages.
+        """,
+    )
 
 # --- Completed fertility ----------------------------------------------------
 st.header("Fertility by religious denomination")
@@ -419,4 +491,13 @@ if not children_subset.empty:
         over-represented at three or more children, while non-Muslims cluster
         on the left side with one or two children.
         """
+    )
+    _figure_caption(
+        "Completed fertility (number of biological children) by denomination",
+        """
+        Bars to the right of zero represent Muslim respondents; bars to the left show Non-Muslim shares.
+        Percent labels on the x-axis denote the proportion within each faith group at a given parity,
+        illustrating how Muslim households accumulate at higher birth orders while Non-Muslims remain
+        concentrated at one or two children.
+        """,
     )
